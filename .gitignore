@@ -49,7 +49,7 @@ build/
 ### Custom ###
 # Omgevingsvariabelen en logs
 .env
-/src/main/java/com.expo.crm/log.txt
+/src/main/java/com/expo/crm/log.txt
 
 # Scripts directory
 scripts_rbmq/
