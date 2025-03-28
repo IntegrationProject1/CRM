@@ -8,23 +8,15 @@ import java.net.http.HttpResponse;
 import io.github.cdimascio.dotenv.Dotenv;
 
 public class CreateContact {
-    public static void main(String[] args) throws Exception {
+    public static void createContact(String jsonObject) throws Exception {
         // Load environment variables
         Dotenv dotenv = Dotenv.load();
-        String obj =
-                """
-                {
-                    "FirstName": "Zero",
-                    "LastName": "Aizen",
-                    "Email": "zero@example.com"
-                }
-                """;
         String urlApi = "/services/data/v63.0/sobjects/Contact/";
         String salesforceUrl = dotenv.get("SALESFORCE_URL");
         HttpClient client = HttpClient.newHttpClient();
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(salesforceUrl + urlApi))
-                .POST(HttpRequest.BodyPublishers.ofString(obj))
+                .POST(HttpRequest.BodyPublishers.ofString(jsonObject))
                 .header("Authorization", "Bearer " + dotenv.get("SALESFORCE_TOKEN"))
                 .header("Content-Type", "application/json")
                 .build();

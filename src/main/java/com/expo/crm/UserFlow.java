@@ -1,10 +1,11 @@
 package com.expo.crm;
 
 import static com.expo.crm.salesforce.account.CreateAccount.createAccount;
+import static com.expo.crm.salesforce.contact.CreateContact.createContact;
 
 public class UserFlow {
     public static void main(String[] args) throws Exception {
-        String obj =
+        String objA =
                 """
                 {
                     "Name": "Account",
@@ -13,6 +14,16 @@ public class UserFlow {
                     "Industry": "Technology"
                 }
                 """;
-        createAccount(obj);
+        String objC =
+                """
+                {
+                    "FirstName": "Zero",
+                    "LastName": "Aizen",
+                    "Email": "zero@example.com"
+                }
+                """;
+        createAccount(objA);
+        createContact(objC);
+
     }
 }
