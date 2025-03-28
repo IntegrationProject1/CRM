@@ -2,10 +2,11 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.expo.crm</groupId>
-    <artifactId>CRM</artifactId>
+    <artifactId>crm-microservice</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <properties>
@@ -15,6 +16,19 @@
     </properties>
 
     <dependencies>
+        <!-- HTTP client voor REST-verzoeken -->
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>okhttp</artifactId>
+            <version>5.0.0-alpha.14</version>
+        </dependency>
 
+        <!-- JSON/XML conversies -->
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20231013</version>
+        </dependency>
     </dependencies>
+
 </project>
