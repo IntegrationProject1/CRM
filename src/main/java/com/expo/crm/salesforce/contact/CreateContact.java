@@ -17,7 +17,7 @@ public class CreateContact {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(salesforceUrl + urlApi))
                 .POST(HttpRequest.BodyPublishers.ofString(jsonObject))
-                .header("Authorization", "Bearer " + dotenv.get("SALESFORCE_TOKEN"))
+                .header("Authorization", "Bearer " + dotenv.get("SALESFORCE_ACCESS_TOKEN"))
                 .header("Content-Type", "application/json")
                 .build();
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());

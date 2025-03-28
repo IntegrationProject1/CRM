@@ -8,8 +8,8 @@ public class UserFlow {
         String objA =
                 """
                 {
-                    "Name": "Account",
-                    "Phone": "123-456-7899",
+                    "Name": "Account 1",
+                    "Phone": "123-456-7898",
                     "Website": "https://www.example.com",
                     "Industry": "Technology"
                 }
@@ -18,7 +18,7 @@ public class UserFlow {
                 """
                 {
                     "FirstName": "Zero",
-                    "LastName": "Aizen",
+                    "LastName": "Aizen123",
                     "Email": "zero@example.com"
                 }
                 """;
