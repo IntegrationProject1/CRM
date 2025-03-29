@@ -1,14 +1,29 @@
 package com.expo.crm;
 
-import com.expo.crm.salesforce.contact.CreateContact;
-import com.expo.crm.salesforce.contact.UpdateContact;
+import static com.expo.crm.salesforce.account.CreateAccount.createAccount;
+import static com.expo.crm.salesforce.contact.CreateContact.createContact;
 
 public class UserFlow {
-    // CreateContact
-    public static String createUserFromJson(String jsonInput) {
-        return CreateContact.createFromJson(jsonInput);
-    }
-    public static String updateUserFromJson(String contactId, String jsonInput) {
-        return UpdateContact.updateContactById(contactId, jsonInput);
+    public static void main(String[] args) throws Exception {
+        String objA =
+            """
+            {
+                "Name": "Account 1",
+                "Phone": "123-456-7898",
+                "Website": "https://www.example.com",
+                "Industry": "Technology"
+            }
+            """;
+        String objC =
+            """
+            {
+                "FirstName": "Zero",
+                "LastName": "Aizen123",
+                "Email": "zero@example.com"
+            }
+            """;
+        createAccount(objA);
+        createContact(objC);
+
     }
 }
