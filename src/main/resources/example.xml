@@ -1,0 +1,23 @@
+<!--<?xml version="1.0"?>-->
+<!--<company>-->
+<!--    <employee id="1">-->
+<!--        <name>John Doe</name>-->
+<!--        <position>Developer</position>-->
+<!--    </employee>-->
+<!--    <employee id="2">-->
+<!--        <name>Jane Smith</name>-->
+<!--        <position>Manager</position>-->
+<!--    </employee>-->
+<!--</company>-->
+
+<Heartbeat>
+    <ServiceName>naam_van_de_service</ServiceName>
+    <Status>OK</Status>
+    <Timestamp>2023-1010T12:34:56.789Z</Timestamp>
+    <HeartBeatInterval>1</HeartBeatInterval>
+    <Metadata>
+        <Version>1.0.0</Version>
+        <Host>hostname_123</Host>
+        <Environment>production</Environment>
+    </Metadata>
+</Heartbeat>
