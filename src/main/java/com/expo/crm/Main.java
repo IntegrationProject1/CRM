@@ -36,13 +36,14 @@ public class Main {
         System.out.println("Account successfully created: " + response.body());
 
 
-        // GET Account by Id
-        response = accountController.get("001Qy00000y5kvkIAA");
+        // GET User by Id
+        response = accountController.get("005Qy00000E8M6cIAF");
 
         if (response.statusCode() != 200) {
-            throw new RuntimeException("Failed to get Account: " + response.body());
+            throw new RuntimeException("Failed to get User: " + response.body());
         }
-        System.out.println("Account successfully retrieved: " + response.body());
+        System.out.println("User successfully retrieved: " + response.body());
+
 
         // UPDATE Contact by Id
         response = accountController.update("003Qy00000MF8NBIA1", """

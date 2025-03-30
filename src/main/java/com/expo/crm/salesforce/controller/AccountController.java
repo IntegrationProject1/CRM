@@ -6,7 +6,7 @@ import java.net.http.HttpResponse;
 
 public class AccountController {
 
-    private SalesForceClient client;
+    private final SalesForceClient client;
 
     public AccountController(SalesForceClient client) {
         this.client = client;
