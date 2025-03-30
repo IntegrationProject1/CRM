@@ -2,6 +2,7 @@ package com.expo.crm;
 
 import com.expo.crm.salesforce.SalesForceClient;
 import com.expo.crm.salesforce.controller.AccountController;
+import com.expo.crm.salesforce.controller.ContactController;
 
 public class Main {
     public static void main(String[] args) throws Exception {
@@ -13,18 +14,17 @@ public class Main {
         System.out.println("Client successfully initialised");
 
         // Instantie van de controllers aanmaken om te testen
-
         AccountController accountController = new AccountController(client);
-        // ContactController contactController = new ContactController(client); // Nog te implementeren
+        ContactController contactController = new ContactController(client);
         // UserController userController = new UserController(client); // Nog te implementeren
 
 
-        // Testen van alle methoden in AccountController
+        // Wat testen van methoden in de controllers
 
         // CREATE Account
         var response = accountController.create("""
             {
-                "Name": "Account Created by API TEST",
+                "Name": "Account Created by API",
                 "Phone": "123-456-7898",
                 "Website": "https://www.example.com",
                 "Industry": "Technology"
@@ -44,20 +44,17 @@ public class Main {
         }
         System.out.println("Account successfully retrieved: " + response.body());
 
-
-        // UPDATE Account by Id
-        response = accountController.update("001Qy00000y65vOIAQ", """
-            {
-                "Name": "Account updated by API",
-                "Phone": "123-456-7898",
-                "Website": "https://www.example.com",
-                "Industry": "Technology"
-            }""");
+        // UPDATE Contact by Id
+        response = accountController.update("003Qy00000MF8NBIA1", """
+                {
+                    "FirstName": "John",
+                    "LastName": "Doe2 Created by API"
+                }""");
 
         if (response.statusCode() != 204) {
-            throw new RuntimeException("Failed to update Account: " + response.body());
+            throw new RuntimeException("Failed to update Contact: " + response.body());
         }
-        System.out.println("Account successfully updated");
+        System.out.println("Contact successfully updated");
 
 
         // DELETE Account by Id
