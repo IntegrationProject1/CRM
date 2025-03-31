@@ -10,7 +10,7 @@ public class MonitoringHeartbeatCreate {
     public static void send() {
         String xml = buildHeartbeatXml();
         String exchange = EnvReader.get("RABBITMQ_EXCHANGE");
-        String routingKey = "monitoring.heartbeat.create";
+//        String routingKey = "monitoring.heartbeat.create";
         File xsdFile = new File("src/main/resources/heartbeat.xsd"); // Path to your XSD file
 
         if (exchange == null) {
@@ -23,7 +23,7 @@ public class MonitoringHeartbeatCreate {
     }
 
     private static String buildHeartbeatXml() {
-        String serviceName = "MonitoringApp";
+        String serviceName = "CRM";
         String status = "OK";
         String timestamp = Instant.now().toString();
         String heartBeatInterval = "1"; // In seconden
