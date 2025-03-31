@@ -3,17 +3,17 @@ package com.expo.crm.rbmq;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.Channel;
+import com.expo.crm.util.EnvReader;
 
 public class ConsumerClient {
     private final Connection connection;
 
     public ConsumerClient() throws Exception {
         ConnectionFactory factory = new ConnectionFactory();
-        // Hardcoded for simplicity; later, read from config.xml
-        factory.setHost("localhost");
-        factory.setPort(5672);
-        factory.setUsername("guest");
-        factory.setPassword("guest");
+        factory.setHost(EnvReader.get("RABBITMQ_HOST"));
+        factory.setPort(Integer.parseInt(EnvReader.get("RABBITMQ_PORT")));
+        factory.setUsername(EnvReader.get("RABBITMQ_USERNAME"));
+        factory.setPassword(EnvReader.get("RABBITMQ_PASSWORD"));
         this.connection = factory.newConnection();
     }
 

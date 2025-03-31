@@ -13,6 +13,8 @@ public class Main {
 
         System.out.println("Hello world!");
 
+        // Main userflow consumer
+        UserFlow.main(args);
         // Gemeenschappelijke Client object Instantie aanmaken (Logt automatisch in)
         SalesForceClient client = new SalesForceClient();
 
