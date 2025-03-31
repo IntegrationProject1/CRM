@@ -7,6 +7,9 @@ import com.expo.crm.salesforce.controller.ContactController;
 public class Main {
     public static void main(String[] args) throws Exception {
 
+        // HeartBeat Start PUMPING !
+        HeartbeatFlow.start();
+        System.out.println("Applicatie gestart, heartbeat flow draait...");
 
         System.out.println("Hello world!");
 
