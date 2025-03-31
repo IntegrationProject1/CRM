@@ -61,15 +61,15 @@ public class RabbitmqSenderClientTopic {
             }
 
             // Validate the XML message
-            File xmlFile = new File("temp.xml");
-            try (FileWriter writer = new FileWriter(xmlFile)) {
-                writer.write(message);
-            }
+//            File xmlFile = new File("temp.xml");
+//            try (FileWriter writer = new FileWriter(xmlFile)) {
+//                writer.write(message);
+//            }
 
-            boolean isValid = ValidatorXSD.validateXMLSchema(xmlFile, xsdFile);
-            if (!isValid) {
-                throw new IllegalArgumentException("ERROR: Invalid XML message");
-            }
+//            boolean isValid = ValidatorXSD.validateXMLSchema(xmlFile, xsdFile);
+//            if (!isValid) {
+//                throw new IllegalArgumentException("ERROR: Invalid XML message");
+//            }
 
             channel.basicPublish(exchange, routingKey, null, message.getBytes());
             System.out.println(" [x] Sent '" + routingKey + "': '" + message + "'");
