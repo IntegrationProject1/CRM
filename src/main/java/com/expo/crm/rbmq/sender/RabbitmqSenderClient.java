@@ -4,13 +4,17 @@ import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.expo.crm.util.EnvReader;
+import com.expo.crm.util.ValidatorXSD;
+
+import java.io.File;
+import java.io.FileWriter;
 
 public class RabbitmqSenderClient {
-    private static Connection connection;
-    private static Channel channel;
+    public static Connection connection;
+    public static Channel channel;
 
     static {
-        int retries = 5; // Aantal pogingen om verbinding te maken
+        int retries = 5; // Number of attempts to connect
         while (retries > 0) {
             try {
                 ConnectionFactory factory = new ConnectionFactory();
@@ -20,9 +24,9 @@ public class RabbitmqSenderClient {
                 String password = EnvReader.get("RABBITMQ_PASSWORD");
                 String exchange = EnvReader.get("RABBITMQ_EXCHANGE");
 
-                // Validatie van de configuratie
+                // Validate configuration
                 if (host == null || port == null || username == null || password == null || exchange == null) {
-                    throw new IllegalStateException("FOUT: Een of meer RabbitMQ-configuraties ontbreken in .env");
+                    throw new IllegalStateException("ERROR: One or more RabbitMQ configurations are missing in .env");
                 }
 
                 factory.setHost(host);
@@ -33,32 +37,44 @@ public class RabbitmqSenderClient {
                 connection = factory.newConnection();
                 channel = connection.createChannel();
                 channel.exchangeDeclare(exchange, "topic", true);
-                break; // Succes, verlaat de lus
+                break; // Success, exit the loop
             } catch (Exception e) {
-                System.err.println("FOUT bij initialiseren RabbitMQ: " + e.getMessage());
+                System.err.println("ERROR initializing RabbitMQ: " + e.getMessage());
                 retries--;
                 if (retries > 0) {
                     try {
-                        Thread.sleep(5000); // Wacht 5 seconden voor de volgende poging
+                        Thread.sleep(5000); // Wait 5 seconds before the next attempt
                     } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
                     }
                 } else {
-                    System.err.println("FOUT: Kon RabbitMQ niet initialiseren na meerdere pogingen");
+                    System.err.println("ERROR: Could not initialize RabbitMQ after multiple attempts");
                 }
             }
         }
     }
 
-    public static void send(String exchange, String routingKey, String message) {
+    public static void send(String exchange, String routingKey, String message, File xsdFile) {
         try {
             if (channel == null) {
-                throw new IllegalStateException("FOUT: RabbitMQ kanaal niet geïnitialiseerd");
+                throw new IllegalStateException("ERROR: RabbitMQ channel not initialized");
             }
+
+            // Validate the XML message
+            File xmlFile = new File("temp.xml");
+            try (FileWriter writer = new FileWriter(xmlFile)) {
+                writer.write(message);
+            }
+
+            boolean isValid = ValidatorXSD.validateXMLSchema(xmlFile, xsdFile);
+            if (!isValid) {
+                throw new IllegalArgumentException("ERROR: Invalid XML message");
+            }
+
             channel.basicPublish(exchange, routingKey, null, message.getBytes());
-            System.out.println(" [x] Verstuurd '" + routingKey + "': '" + message + "'");
+            System.out.println(" [x] Sent '" + routingKey + "': '" + message + "'");
         } catch (Exception e) {
-            System.err.println("FOUT bij verzenden bericht: " + e.getMessage());
+            System.err.println("ERROR sending message: " + e.getMessage());
         }
     }
 }

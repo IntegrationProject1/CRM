@@ -3,19 +3,21 @@ package com.expo.crm.rbmq.sender.heartbeat;
 import com.expo.crm.rbmq.sender.RabbitmqSenderClient;
 import com.expo.crm.util.EnvReader;
 import java.time.Instant;
+import java.io.File;
 
 public class MonitoringHeartbeatCreate {
     public static void send() {
         String xml = buildHeartbeatXml();
         String exchange = EnvReader.get("RABBITMQ_EXCHANGE");
         String routingKey = "monitoring.heartbeat.create";
+        File xsdFile = new File("src/main/resources/heartbeat.xsd"); // Path to your XSD file
 
         if (exchange == null) {
             System.err.println("FOUT: RABBITMQ_EXCHANGE niet gevonden in .env");
             return;
         }
 
-        RabbitmqSenderClient.send(exchange, routingKey, xml);
+        RabbitmqSenderClient.send(exchange, routingKey, xml, xsdFile);
     }
 
     private static String buildHeartbeatXml() {

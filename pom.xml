@@ -16,26 +16,26 @@
     </properties>
 
     <dependencies>
-        <!-- JSON/XML conversies -->
+<!--    this for json    -->
         <dependency>
             <groupId>org.json</groupId>
             <artifactId>json</artifactId>
             <version>20231013</version>
         </dependency>
+<!--    this is for testing purpose    -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
             <version>5.8.1</version>
             <scope>test</scope>
         </dependency>
-        <!-- RabbitMQ Client  ben hier aan het testen-->
+<!--    this is for rabbitmq    -->
         <dependency>
             <groupId>com.rabbitmq</groupId>
             <artifactId>amqp-client</artifactId>
             <version>5.20.0</version>
         </dependency>
     </dependencies>
-    <!-- Micro server Client  ben hier aan het testen-->
     <build>
         <plugins>
             <plugin>
