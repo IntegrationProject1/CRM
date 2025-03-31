@@ -1,13 +1,13 @@
-package com.expo.crm.rbmq.consumer;
+package com.expo.crm.rbmq;
 
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.Channel;
 
-public class RabbitmqClient {
+public class ConsumerClient {
     private final Connection connection;
 
-    public RabbitmqClient() throws Exception {
+    public ConsumerClient() throws Exception {
         ConnectionFactory factory = new ConnectionFactory();
         // Hardcoded for simplicity; later, read from config.xml
         factory.setHost("localhost");

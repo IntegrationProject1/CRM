@@ -1,9 +1,6 @@
 package com.expo.crm;
 
-import com.expo.crm.rbmq.consumer.CreateUserQueueConsume;
-import com.expo.crm.rbmq.consumer.RabbitmqClient;
-import com.expo.crm.salesforce.SalesForceClient;
-import com.expo.crm.rbmq.consumer.*;
+import com.expo.crm.rbmq.ConsumerClient;
 import com.expo.crm.salesforce.SalesForceClient;
 import com.rabbitmq.client.Channel;
 
@@ -37,7 +34,7 @@ public class UserFlow {
 
         // Initialiseer clients
         SalesForceClient salesForceClient = new SalesForceClient();
-        RabbitmqClient rabbitmqClient = new RabbitmqClient();
+        ConsumerClient rabbitmqClient = new ConsumerClient();
         Channel channel = rabbitmqClient.createChannel();
 
         // Declareer queues en bindings voor users
