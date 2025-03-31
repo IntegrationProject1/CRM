@@ -1,6 +1,6 @@
 package com.expo.crm.rbmq.sender.heartbeat;
 
-import com.expo.crm.rbmq.sender.RabbitmqSenderClient;
+import com.expo.crm.rbmq.sender.RabbitmqSenderClientTopic;
 import com.expo.crm.util.EnvReader;
 import java.time.Instant;
 import java.io.File;
@@ -17,7 +17,7 @@ public class MonitoringHeartbeatCreate {
             return;
         }
 
-        RabbitmqSenderClient.send(exchange, routingKey, xml, xsdFile);
+        RabbitmqSenderClientTopic.send(exchange, routingKey, xml, xsdFile);
     }
 
     private static String buildHeartbeatXml() {

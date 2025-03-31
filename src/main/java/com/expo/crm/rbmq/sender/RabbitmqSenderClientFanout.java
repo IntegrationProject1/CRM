@@ -1,15 +1,15 @@
 package com.expo.crm.rbmq.sender;
 
+import com.expo.crm.util.EnvReader;
+import com.expo.crm.util.ValidatorXSD;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
-import com.expo.crm.util.EnvReader;
-import com.expo.crm.util.ValidatorXSD;
 
 import java.io.File;
 import java.io.FileWriter;
 
-public class RabbitmqSenderClient {
+public class RabbitmqSenderClientFanout {
     public static Connection connection;
     public static Channel channel;
 
@@ -36,7 +36,7 @@ public class RabbitmqSenderClient {
 
                 connection = factory.newConnection();
                 channel = connection.createChannel();
-                channel.exchangeDeclare(exchange, "topic", true);
+                channel.exchangeDeclare(exchange, "fanout", true);
                 break; // Success, exit the loop
             } catch (Exception e) {
                 System.err.println("ERROR initializing RabbitMQ: " + e.getMessage());
@@ -54,7 +54,7 @@ public class RabbitmqSenderClient {
         }
     }
 
-    public static void send(String exchange, String routingKey, String message, File xsdFile) {
+    public static void send(String exchange, String message, File xsdFile) {
         try {
             if (channel == null) {
                 throw new IllegalStateException("ERROR: RabbitMQ channel not initialized");
@@ -71,8 +71,8 @@ public class RabbitmqSenderClient {
                 throw new IllegalArgumentException("ERROR: Invalid XML message");
             }
 
-            channel.basicPublish(exchange, routingKey, null, message.getBytes());
-            System.out.println(" [x] Sent '" + routingKey + "': '" + message + "'");
+            channel.basicPublish(exchange, "", null, message.getBytes());
+            System.out.println(" [x] Sent: '" + message + "'");
         } catch (Exception e) {
             System.err.println("ERROR sending message: " + e.getMessage());
         }
