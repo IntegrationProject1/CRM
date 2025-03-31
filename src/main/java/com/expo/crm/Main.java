@@ -6,6 +6,8 @@ import com.expo.crm.salesforce.controller.ContactController;
 
 public class Main {
     public static void main(String[] args) throws Exception {
+
+
         System.out.println("Hello world!");
 
         // Gemeenschappelijke Client object Instantie aanmaken (Logt automatisch in)
@@ -65,5 +67,9 @@ public class Main {
             throw new RuntimeException("Failed to delete Account: " + response.body());
         }
         System.out.println("Account successfully deleted");
+
+
+
+
     }
 }
