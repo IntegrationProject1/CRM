@@ -66,12 +66,33 @@ public class SalesForceClient {
 
         System.out.println(instanceUrl + "/services/data/" + apiVersion + endpoint);
 
-        // Stuur request met Body afhankelijk van de methode (GET, POST, PATCH)
         if ("POST".equals(method) || "PATCH".equals(method)) {
             builder.method(method, HttpRequest.BodyPublishers.ofString(body));
         } else {
             builder.method(method, HttpRequest.BodyPublishers.noBody());
         }
         return client.send(builder.build(), HttpResponse.BodyHandlers.ofString());
+    }
+
+    public void createUserFromJson(String json) {
+        try {
+            JSONObject data = new JSONObject(json);
+
+            JSONObject contact = new JSONObject();
+            contact.put("FirstName", data.optString("first_name"));
+            contact.put("LastName", data.optString("last_name"));
+            contact.put("Email", data.optString("email"));
+
+            HttpResponse<String> response = executeRequest("/sobjects/Contact", "POST", contact.toString());
+
+            if (response.statusCode() != 201) {
+                System.err.println("[SalesforceClient] Failed to create user: " + response.body());
+            } else {
+                System.out.println("[SalesforceClient] User successfully created: " + response.body());
+            }
+        } catch (Exception e) {
+            System.err.println("[SalesforceClient] Error in createUserFromJson: " + e.getMessage());
+            e.printStackTrace();
+        }
     }
 }
