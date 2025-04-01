@@ -19,6 +19,9 @@ public class AccountController {
     public HttpResponse get(String accountId) throws Exception {
         return client.executeRequest("/sobjects/Account/" + accountId, "GET", null);
     }
+    public HttpResponse getAll() throws Exception {
+        return client.executeRequest("/sobjects/Account/", "GET", null);
+    }
 
     public HttpResponse update(String accountId, String jsonObject) throws Exception {
         return client.executeRequest("/sobjects/Account/" + accountId, "PATCH", jsonObject);
