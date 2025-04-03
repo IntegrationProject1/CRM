@@ -54,3 +54,4 @@ build/
 
 # Scripts directory
 scripts_rbmq/
+node_modules
