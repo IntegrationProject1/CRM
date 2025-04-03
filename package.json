@@ -1,0 +1,18 @@
+{
+  "name": "crm-local",
+  "version": "1.0.0",
+  "description": "this is a example of readme",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "amqplib": "^0.10.7",
+    "dotenv": "^16.4.7",
+    "jsforce": "^3.7.0",
+    "xml2js": "^0.6.2"
+  }
+}
