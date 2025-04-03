@@ -3,7 +3,6 @@ const connectSalesforce = require("../config/salesforce");
 async function handleCreateUser(data) {
   const conn = await connectSalesforce();
 
-  // Check of Account bestaat (bedrijfsnaam)
   let accountId = null;
   if (data.Business && data.Business.BusinessName) {
     const existing = await conn
@@ -24,17 +23,60 @@ async function handleCreateUser(data) {
     }
   }
 
-  // Maak Contact aan
   await conn.sobject("Contact").create({
     FirstName: data.FirstName,
     LastName: data.LastName,
     Email: data.EmailAddress,
     Phone: data.PhoneNumber,
     AccountId: accountId,
-    UUID__c: data.UUID // aan te maken als custom veld
+    UUID__c: parseInt(data.UUID),
   });
 
   console.log("✅ Contact succesvol aangemaakt:", data.FirstName, data.LastName);
 }
 
-module.exports = { handleCreateUser };
+async function handleUpdateUser(data) {
+  const conn = await connectSalesforce();
+
+  const existing = await conn
+    .sobject("Contact")
+    .findOne({ UUID__c: parseInt(data.UUID) });
+
+  if (!existing) {
+    console.warn("⚠️ Contact met UUID niet gevonden:", data.UUID);
+    return;
+  }
+
+  await conn.sobject("Contact").update({
+    Id: existing.Id,
+    FirstName: data.FirstName,
+    LastName: data.LastName,
+    Email: data.EmailAddress,
+    Phone: data.PhoneNumber,
+  });
+
+  console.log("✅ Contact succesvol geüpdatet:", data.FirstName);
+}
+
+async function handleDeleteUser(data) {
+  const conn = await connectSalesforce();
+
+  const existing = await conn
+    .sobject("Contact")
+    .findOne({ UUID__c: parseInt(data.UUID) });
+
+  if (!existing) {
+    console.warn("⚠️ Contact niet gevonden voor DELETE:", data.UUID);
+    return;
+  }
+
+  await conn.sobject("Contact").destroy(existing.Id);
+  console.log("🗑️ Contact succesvol verwijderd:", data.UUID);
+}
+
+module.exports = {
+  handleCreateUser,
+  handleUpdateUser,
+  handleDeleteUser,
+};
+
