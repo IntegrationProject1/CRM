@@ -1,0 +1,1 @@
+//consumer for crm_user_create queue in rabbitmq
