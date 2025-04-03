@@ -1,6 +1,18 @@
 const connectSalesforce = require("../config/salesforce");
 
-async function handleCreateUser(data) {
+async function sendLog(channel, type, uuid, status) {
+  const logMessage = JSON.stringify({
+    source: "CRM",
+    type,
+    uuid,
+    status,
+    timestamp: new Date().toISOString(),
+  });
+  await channel.assertQueue("crm_log", { durable: true });
+  channel.sendToQueue("crm_log", Buffer.from(logMessage));
+}
+
+async function handleCreateUser(data, channel = null) {
   const conn = await connectSalesforce();
 
   let accountId = null;
@@ -23,19 +35,25 @@ async function handleCreateUser(data) {
     }
   }
 
-  await conn.sobject("Contact").create({
-    FirstName: data.FirstName,
-    LastName: data.LastName,
-    Email: data.EmailAddress,
-    Phone: data.PhoneNumber,
-    AccountId: accountId,
-    UUID__c: parseInt(data.UUID),
-  });
+  try {
+    await conn.sobject("Contact").create({
+      FirstName: data.FirstName,
+      LastName: data.LastName,
+      Email: data.EmailAddress,
+      Phone: data.PhoneNumber,
+      AccountId: accountId,
+      UUID__c: parseInt(data.UUID),
+    });
 
-  console.log("✅ Contact succesvol aangemaakt:", data.FirstName, data.LastName);
+    console.log("✅ Contact succesvol aangemaakt:", data.FirstName, data.LastName);
+    if (channel) await sendLog(channel, "CREATE", data.UUID, "SUCCESS");
+  } catch (err) {
+    console.error("❌ Fout bij CREATE:", err?.errorCode || err.message);
+    if (channel) await sendLog(channel, "CREATE", data.UUID, err?.errorCode || "ERROR");
+  }
 }
 
-async function handleUpdateUser(data) {
+async function handleUpdateUser(data, channel = null) {
   const conn = await connectSalesforce();
 
   const existing = await conn
@@ -44,21 +62,28 @@ async function handleUpdateUser(data) {
 
   if (!existing) {
     console.warn("⚠️ Contact met UUID niet gevonden:", data.UUID);
+    if (channel) await sendLog(channel, "UPDATE", data.UUID, "NOT_FOUND");
     return;
   }
 
-  await conn.sobject("Contact").update({
-    Id: existing.Id,
-    FirstName: data.FirstName,
-    LastName: data.LastName,
-    Email: data.EmailAddress,
-    Phone: data.PhoneNumber,
-  });
+  try {
+    await conn.sobject("Contact").update({
+      Id: existing.Id,
+      FirstName: data.FirstName,
+      LastName: data.LastName,
+      Email: data.EmailAddress,
+      Phone: data.PhoneNumber,
+    });
 
-  console.log("✅ Contact succesvol geüpdatet:", data.FirstName);
+    console.log("✅ Contact succesvol geüpdatet:", data.FirstName);
+    if (channel) await sendLog(channel, "UPDATE", data.UUID, "SUCCESS");
+  } catch (err) {
+    console.error("❌ Fout bij UPDATE:", err?.errorCode || err.message);
+    if (channel) await sendLog(channel, "UPDATE", data.UUID, err?.errorCode || "ERROR");
+  }
 }
 
-async function handleDeleteUser(data) {
+async function handleDeleteUser(data, channel = null) {
   const conn = await connectSalesforce();
 
   const existing = await conn
@@ -67,11 +92,18 @@ async function handleDeleteUser(data) {
 
   if (!existing) {
     console.warn("⚠️ Contact niet gevonden voor DELETE:", data.UUID);
+    if (channel) await sendLog(channel, "DELETE", data.UUID, "NOT_FOUND");
     return;
   }
 
-  await conn.sobject("Contact").destroy(existing.Id);
-  console.log("🗑️ Contact succesvol verwijderd:", data.UUID);
+  try {
+    await conn.sobject("Contact").destroy(existing.Id);
+    console.log("🗑️ Contact succesvol verwijderd:", data.UUID);
+    if (channel) await sendLog(channel, "DELETE", data.UUID, "SUCCESS");
+  } catch (err) {
+    console.error("❌ Fout bij DELETE:", err?.errorCode || err.message);
+    if (channel) await sendLog(channel, "DELETE", data.UUID, err?.errorCode || "ERROR");
+  }
 }
 
 module.exports = {
@@ -79,4 +111,3 @@ module.exports = {
   handleUpdateUser,
   handleDeleteUser,
 };
-

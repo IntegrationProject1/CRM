@@ -16,7 +16,7 @@ async function userDeleteConsumer(channel) {
 
         if (userMessage.ActionType === "DELETE") {
           console.log("📥 DELETE ontvangen:", userMessage);
-          await handleDeleteUser(userMessage);
+          await handleDeleteUser(userMessage, channel); // 👈 channel meegeven
         }
 
         channel.ack(msg);

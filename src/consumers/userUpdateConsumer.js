@@ -16,7 +16,7 @@ async function userUpdateConsumer(channel) {
 
         if (userMessage.ActionType === "UPDATE") {
           console.log("📥 UPDATE ontvangen:", userMessage);
-          await handleUpdateUser(userMessage);
+          await handleUpdateUser(userMessage, channel); // 👈 channel meegeven
         }
 
         channel.ack(msg);
@@ -28,4 +28,3 @@ async function userUpdateConsumer(channel) {
 }
 
 module.exports = userUpdateConsumer;
-

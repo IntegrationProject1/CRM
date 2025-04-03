@@ -16,7 +16,7 @@ async function userConsumer(channel) {
 
         if (userMessage.ActionType === "CREATE") {
           console.log("📥 CREATE ontvangen:", userMessage);
-          await handleCreateUser(userMessage); // Salesforce-opslag
+          await handleCreateUser(userMessage, channel); // 👈 channel meegeven
         }
 
         channel.ack(msg);
