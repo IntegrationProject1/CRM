@@ -57,6 +57,8 @@ node scripts/sendDeleteMessage.js
 ```
 
 ## Logging
+=======
+This project is licensed under the ISC License. See the `LICENSE` file for details.
 
 Elke actie (CREATE, UPDATE, DELETE) stuurt een logbericht naar `crm_log` met status `SUCCESS`, `ERROR` of `NOT_FOUND`.
 

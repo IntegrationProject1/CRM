@@ -6,7 +6,7 @@ async function consumeLogs() {
 
   await channel.assertQueue("crm_log", { durable: true });
 
-  console.log("📥 Log-consumer gestart. Wachten op berichten...\n");
+  console.log("📥 Log-import gestart. Wachten op berichten...\n");
 
   channel.consume("crm_log", (msg) => {
     const content = msg.content.toString();
