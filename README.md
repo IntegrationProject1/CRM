@@ -1,10 +1,4 @@
 
-<<<<<<< HEAD
-> [!CAUTION]
-> 
-> Due to technical problems we leave Java and migrate to JavaScript. 
-> (PS This is the last commit in the Java directory system)
-=======
 # CRM Microservice - Salesforce Integratie
 
 Deze microservice verzorgt de communicatie tussen het centrale platform en Salesforce via RabbitMQ en de Salesforce REST API (JSforce).
@@ -69,5 +63,3 @@ Elke actie (CREATE, UPDATE, DELETE) stuurt een logbericht naar `crm_log` met sta
 ## Change Data Capture (CDC)
 
 De structuur is voorbereid om CDC toe te voegen. Er wordt geluisterd naar `/data/ContactChangeEvent`, vanwaaruit toekomstige berichten kunnen worden gegenereerd richting andere queues.
-
->>>>>>> java_to_jsforce
