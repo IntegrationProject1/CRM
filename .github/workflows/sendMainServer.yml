@@ -46,11 +46,11 @@ jobs:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: Copy Docker image to server
-        run: scp -o StrictHostKeyChecking=no crm-service.tar ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/tmp/crm-service.tar
+        run: scp -P 60022 -o StrictHostKeyChecking=no crm-service.tar ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/tmp/crm-service.tar
 
       - name: SSH into server and deploy
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+          ssh -p 60022 -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
             docker load -i /tmp/crm-service.tar
             # Stop current container
             docker stop crm-service || true
@@ -59,4 +59,5 @@ jobs:
             cd ~/crmV2
             docker compose --env-file .env.production up -d --build
           EOF
+
 
