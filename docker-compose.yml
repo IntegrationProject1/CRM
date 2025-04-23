@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  crm-service:
+    build:
+      context: .
+    container_name: crm-service
+    env_file:
+      - .env
+    networks:
+      - rabbitmq_project_network
+    restart: unless-stopped
+
+networks:
+  rabbitmq_project_network:
+    external: true
