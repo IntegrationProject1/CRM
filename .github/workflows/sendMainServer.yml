@@ -45,6 +45,9 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
+      - name: Debug SSH Agent
+        run: ssh-add -l
+
       - name: Copy Docker image to server
         run: scp -P 60022 -o StrictHostKeyChecking=no crm-service.tar ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/tmp/crm-service.tar
 
