@@ -40,20 +40,17 @@ jobs:
       - name: Save Docker image as tarball
         run: docker save crm-service:latest -o crm-service.tar
 
-      - name: Set up SSH
-        uses: webfactory/ssh-agent@v0.7.0
+      - name: Copy Docker image to server and deploy
+        uses: appleboy/ssh-action@v0.1.6
         with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-      - name: Debug SSH Agent
-        run: ssh-add -l
-
-      - name: Copy Docker image to server
-        run: scp -P 60022 -o StrictHostKeyChecking=no crm-service.tar ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/tmp/crm-service.tar
-
-      - name: SSH into server and deploys
-        run: |
-          ssh -p 60022 -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            # Copy Docker image tarball to the server
+            scp /tmp/crm-service.tar /tmp/crm-service.tar
+            # Load Docker image
             docker load -i /tmp/crm-service.tar
             # Stop current container
             docker stop crm-service || true
@@ -61,6 +58,16 @@ jobs:
             # Navigate to deployment folder and run compose
             cd ~/crmV2
             docker compose --env-file .env.production up -d --build
-          EOF
+            - name: SSH into server and deploys
+              run: |
+                ssh -p 60022 -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+                  docker load -i /tmp/crm-service.tar
+                  # Stop current container
+                  docker stop crm-service || true
+                  docker rm crm-service || true
+                  # Navigate to deployment folder and run compose
+                  cd ~/crmV2
+                  docker compose --env-file .env.production up -d --build
+                EOF
 
 
