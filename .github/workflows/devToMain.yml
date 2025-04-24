@@ -8,6 +8,6 @@ on:
 jobs:
   accept-or-block:
     runs-on: ubuntu-latest
-    steps:
-      - name: node install
-        run: npm install
+    # steps:
+    #   - name: node install
+    #     run: npm install
