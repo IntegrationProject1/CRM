@@ -1,51 +1,59 @@
-name: CI/CD Pipeline
+name: Test and Deploy
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
 
 jobs:
-  test:
+  test-jsforce:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
-          cache: 'npm'
+          node-version: '16'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
-      - name: Run tests (optioneel, mag ook tijdelijk 'npm run lint' zijn)
-        run: echo "⚠️ Nog geen test setup, overslaan"
-        #run: npm test
-  deploy:
-    name: Deploy To Server
-    needs: test
+      - name: Run tests
+        run: npm test
+
+  deploy-to-server:
     runs-on: ubuntu-latest
-    environment: environment
-
+    needs: test-jsforce
     steps:
-      - name: Setup SSH Connection
-        uses: appleboy/ssh-action@v1.1.0
-        with:
-          debug: true
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          script: |
-            # Pull the latest changes to ensure the container uses the latest code
-            echo "Pulling the latest code from the repository to update the application."
-            cd ~/crmV2
-            git pull origin main
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-            # Stop the running container, rebuild with the updated code, and restart
-            echo "Rebuilding and restarting the container with the latest code."
-            docker compose down
-            docker compose up -d --build
+      - name: Deploy to server
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          GITHUB_REPO: ${{ github.repository }}
+        run: |
+          ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no $SERVER_USER@$SERVER_HOST << EOF
+          # Navigate to the app directory
+          cd ~/crmV2
+
+          # Pull the latest code from the main branch
+          git pull origin main
+
+          # Stop and remove the existing container
+          docker stop CRM || true
+          docker rm CRM || true
+
+          # Rebuild the container with the latest code
+          docker build -t CRM:latest .
+
+          # Run the new container
+          docker run -d --name CRM CRM:latest
+          EOF
