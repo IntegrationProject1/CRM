@@ -48,26 +48,8 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.SSH_PORT }}
           script: |
-            # Copy Docker image tarball to the server
-            scp /tmp/crm-service.tar /tmp/crm-service.tar
-            # Load Docker image
-            docker load -i /tmp/crm-service.tar
-            # Stop current container
-            docker stop crm-service || true
-            docker rm crm-service || true
-            # Navigate to deployment folder and run compose
             cd ~/crmV2
-            docker compose --env-file .env.production up -d --build
-            - name: SSH into server and deploys
-              run: |
-                ssh -p 60022 -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
-                  docker load -i /tmp/crm-service.tar
-                  # Stop current container
-                  docker stop crm-service || true
-                  docker rm crm-service || true
-                  # Navigate to deployment folder and run compose
-                  cd ~/crmV2
-                  docker compose --env-file .env.production up -d --build
-                EOF
-
+            git pull origin main
+            docker compose down
+            docker compose up -d --build
 
