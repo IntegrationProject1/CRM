@@ -41,10 +41,10 @@ jobs:
       - name: Save Docker image as tarball
         run: docker save crm-service:latest -o crm-service.tar
 
-      - name: Upload Docker image to server
-        run: scp -P 60022 -o StrictHostKeyChecking=no crm-service.tar ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:~/crmV2
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      # - name: Upload Docker image to server
+      #   run: scp -P 60022 -o StrictHostKeyChecking=no crm-service.tar ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:~/crmV2
+      #   env:
+      #     SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
       # - name: Deploy Docker image on server
       #   run: |
