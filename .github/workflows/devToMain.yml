@@ -1,0 +1,13 @@
+name: Accept or Block Pull Request to Main
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  accept-or-block:
+    runs-on: ubuntu-latest
+    steps:
+      - name: node install
+        run: npm install
