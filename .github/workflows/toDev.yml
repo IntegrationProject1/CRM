@@ -1,4 +1,4 @@
-name: Accept or Block Pull Request to Main
+name: validator for main
 
 on:
   pull_request:
