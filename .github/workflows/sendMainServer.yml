@@ -24,6 +24,7 @@ jobs:
       - name: Run tests
         run: echo "⚠️ Nog geen test setup, overslaan"
         #run: npm test
+
   build-and-deploy:
     needs: test
     runs-on: ubuntu-latest
@@ -39,3 +40,17 @@ jobs:
 
       - name: Save Docker image as tarball
         run: docker save crm-service:latest -o crm-service.tar
+
+      - name: Upload Docker image to server
+        run: scp -o StrictHostKeyChecking=no crm-service.tar ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:~/crmV2
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      # - name: Deploy Docker image on server
+      #   run: |
+      #     ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+      #     docker load -i ~/crmV2/crm-service.tar
+      #     docker run -d crm-service:latest
+      #     EOF
+      #   env:
+      #     SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
