@@ -15,6 +15,10 @@ class SalesforceClient {
     console.log('✅ Ingelogd bij Salesforce via jsforce');
   }
 
+  createCDCClient() {
+    return this.conn.streaming.createClient();
+  }
+
   async createUser(data) {
     const result = await this.conn.sobject('Contact').create(data);
     console.log('[CREATE] Salesforce:', result);
@@ -28,6 +32,10 @@ class SalesforceClient {
   async deleteUser(id) {
     const result = await this.conn.sobject('Contact').destroy(id);
     console.log('[DELETE] Salesforce:', result);
+  }
+
+  sObject(sObjectName) {
+    return this.conn.sobject(sObjectName);
   }
 }
 
