@@ -2,8 +2,9 @@ require('dotenv').config();
 const amqp = require('amqplib');
 const SalesforceClient = require("./salesforceClient");
 const { jsonToXml, transformSalesforceToXml } = require("./xmlJsonTranslator");
+const validator = require("./xmlValidator");
 
-async function startCDCListener(salesforceClient) {
+async function startCDCListener(salesforceClient, rabbitMQChannel) {
   const cdcClient = salesforceClient.createCDCClient();
   let ignoreUpdate = false;
 
@@ -45,6 +46,7 @@ async function startCDCListener(salesforceClient) {
             ...objectData
           }
         };
+
         break;
 
       case 'UPDATE':
@@ -91,6 +93,9 @@ async function startCDCListener(salesforceClient) {
             "TimeOfAction": new Date().toISOString()
           }
         };
+        // convetor en daarna xsd valt toevoegen
+        // 2. Converteer naar XML
+        // 3. Valideer XML op basis van XSD
         break;
 
       default:
