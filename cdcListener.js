@@ -1,33 +1,23 @@
 require('dotenv').config();
-
-const SalesforceClient = require("./salesforceClient");
-const {jsonToXml} = require("./xmlJsonTranslator");
 const amqp = require('amqplib');
+const SalesforceClient = require("./salesforceClient");
+const { jsonToXml, transformSalesforceToXml } = require("./xmlJsonTranslator");
 
-async function startCDCListener(salesforceClient, rabbitMQChannel) {
-
-  // Luister op de standaard CDC kanaal voor Contact
+async function startCDCListener(salesforceClient) {
   const cdcClient = salesforceClient.createCDCClient();
-  let ignoreUpdate = false; // Flag om UPDATE events te negeren na UUID toewijzing
+  let ignoreUpdate = false;
 
-  cdcClient.subscribe('/data/ContactChangeEvent', async function (message) {  // Listen to Contact event
+  cdcClient.subscribe('/data/ContactChangeEvent', async function (message) {
+    const { ChangeEventHeader, ...objectData } = message.payload;
+    const action = ChangeEventHeader.changeType;
 
-    // Onderscheid Object data & Header data
-    const {ChangeEventHeader, ...objectData} = message.payload;
-
-    // Action ophalen (e.g. CREATE, UPDATE, DELETE)
-    const action = message.payload.ChangeEventHeader.changeType;
-
-    console.log('📥 Salesforce CDC Contact Event ontvangen: ', action);
+    console.log('📥 Salesforce CDC Contact Event ontvangen:', action);
 
     // RecordId ophalen vanuit ChangeEventHeader
     let recordId;
-    if (action === 'CREATE' || action === 'UPDATE' || action === 'DELETE') {
-      recordId = ChangeEventHeader.recordIds && ChangeEventHeader.recordIds.length > 0
-          ? ChangeEventHeader.recordIds[0]
-          : null;
-
-      if (!recordId) return console.error('❌ Geen recordId gevonden in ChangeEventHeader')
+    if (['CREATE', 'UPDATE', 'DELETE'].includes(action)) {
+      recordId = ChangeEventHeader.recordIds?.[0];
+      if (!recordId) return console.error('❌ Geen recordId gevonden.');
     }
 
     let UUIDTimeStamp;
@@ -54,7 +44,7 @@ async function startCDCListener(salesforceClient, rabbitMQChannel) {
             "TimeOfAction": new Date().toISOString(),
             ...objectData
           }
-        }
+        };
         break;
 
       case 'UPDATE':
@@ -65,8 +55,8 @@ async function startCDCListener(salesforceClient, rabbitMQChannel) {
         }
 
         const resultUpd = await salesforceClient.sObject('Contact').retrieve(recordId);
-        if (!resultUpd.UUID__c) {
-          console.error("❌ Geen resultaat gevonden voor UUID van recordId:", recordId);
+        if (!resultUpd?.UUID__c) {
+          console.error("❌ Geen UUID gevonden voor recordId:", recordId);
           return;
         }
         UUIDTimeStamp = resultUpd.UUID__c;
@@ -79,7 +69,7 @@ async function startCDCListener(salesforceClient, rabbitMQChannel) {
             "PhoneNumber": objectData.Phone,
             "EmailAddress": objectData.Email
           }
-        }
+        };
         break;
 
       case 'DELETE':
@@ -89,9 +79,7 @@ async function startCDCListener(salesforceClient, rabbitMQChannel) {
             .where({Id: recordId, IsDeleted: true})
             .limit(1)
             .scanAll(true);
-
         const resultDel = await query.run();
-
         UUIDTimeStamp = resultDel[0]?.UUID__c || null;
 
         if (!UUIDTimeStamp) return console.error("❌ Geen UUID gevonden voor verwijderde record met Id:", recordId);
@@ -102,11 +90,12 @@ async function startCDCListener(salesforceClient, rabbitMQChannel) {
             "UUID": new Date(UUIDTimeStamp).toISOString(),
             "TimeOfAction": new Date().toISOString()
           }
-        }
+        };
         break;
 
       default:
-        return console.warn("⚠️Niet gehandelde actie gedetecteerd:", action);
+        console.warn("⚠️ Niet gehandelde actie:", action);
+        return;
     }
 
     /*TODO
