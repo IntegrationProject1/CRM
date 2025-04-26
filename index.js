@@ -5,6 +5,9 @@ const SalesforceClient   = require('./salesforceClient');
 const createUserConsumer = require('./consumers/createUserConsumer');
 const updateUserConsumer = require('./consumers/updateUserConsumer');
 const deleteUserConsumer = require('./consumers/deleteUserConsumer');
+const createEventConsumer = require('./consumers/createEventConsumer');
+const updateEventConsumer = require('./consumers/updateEventConsumer');
+const deleteEventConsumer = require('./consumers/deleteEventConsumer');
 
 (async () => {
   try {
@@ -36,9 +39,15 @@ const deleteUserConsumer = require('./consumers/deleteUserConsumer');
     await sfClient.login(); // 🔐 OAuth-login via jsforce
 
     // ─── 3️⃣ Start de consumers ────────────────────────────────────────────
+    // User CRUD consumers
     await createUserConsumer(channel, sfClient, crudX);
     await updateUserConsumer(channel, sfClient, crudX);
     await deleteUserConsumer(channel, sfClient, crudX);
+
+    // Event CRUD consumers
+    await createEventConsumer(channel, sfClient, crudX);
+    await updateEventConsumer(channel, sfClient, crudX);
+    await deleteEventConsumer(channel, sfClient, crudX);
 
     // ─── 4️⃣ Heartbeat elke 5s ─────────────────────────────────────────────
     setInterval(() => {
