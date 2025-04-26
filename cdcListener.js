@@ -1,80 +1,128 @@
 require('dotenv').config();
-
 // const amqp = require('amqplib');
+
 const SalesforceClient = require("./salesforceClient");
+const {jsonToXml} = require("./xmlJsonTranslator");
 
 async function startCDCListener(salesforceClient) {
-  // RABBITMQ connection
-  // const amqpConn = await amqp.connect(`amqp://${process.env.RABBITMQ_USERNAME}:${process.env.RABBITMQ_PASSWORD}@${process.env.RABBITMQ_HOST}:${process.env.RABBITMQ_PORT}`);
-  // const channel = await amqpConn.createChannel();
-  // console.log("✅ Verbonden met RabbitMQ Kanaal");
 
   // Luister op de standaard CDC kanaal voor Contact
   const cdcClient = salesforceClient.createCDCClient();
+  let ignoreUpdate = false; // Flag om UPDATE events te negeren na UUID toewijzing
 
   cdcClient.subscribe('/data/ContactChangeEvent', async function (message) {  // Listen to Contact event
 
     // Onderscheid Object data & Header data
     const {ChangeEventHeader, ...objectData} = message.payload;
 
-    // RecordId ophalen
-    const recordId = ChangeEventHeader.recordIds && ChangeEventHeader.recordIds.length > 0
-        ? ChangeEventHeader.recordIds[0]
-        : null;
-    if (recordId) {
-      objectData.Id = recordId;
-    } else {
-      console.error('❌ Geen recordId gevonden in ChangeEventHeader');
-      return;
-    }
-    let ObjectUUID;
-
     // Action ophalen (e.g. CREATE, UPDATE, DELETE)
     const action = message.payload.ChangeEventHeader.changeType;
 
+    console.log('📥Salesforce CDC Contact Event ontvangen: ', action);
+
+    // RecordId ophalen vanuit ChangeEventHeader
+    let recordId;
+    if (action === 'CREATE' || action === 'UPDATE' || action === 'DELETE') {
+      recordId = ChangeEventHeader.recordIds && ChangeEventHeader.recordIds.length > 0
+          ? ChangeEventHeader.recordIds[0]
+          : null;
+
+      if (!recordId) return console.error('❌ Geen recordId gevonden in ChangeEventHeader')
+    }
+
+    let UUIDTimeStamp;
+    let JSONMsg;
+
     switch (action) {
       case 'CREATE':
-
         // Een UUID genereren voor de nieuwe record en deze in Salesforce bijwerken
-        let timestamp = new Date().getTime();
+        UUIDTimeStamp = new Date().getTime();
+
+        ignoreUpdate=true; // De volgende Update CDC negeren (vermijd dubbel bijwerken van UUID)
         try {
-          await salesforceClient.updateUser(recordId, { UUID__c: timestamp });
+          await salesforceClient.updateUser(recordId, { UUID__c: UUIDTimeStamp });
           console.log("✅ UUID successvol bijgewerkt");
         } catch (err) {
           console.error("❌ Fout bij instellen UUID:", err.message);
           return;
         }
-        ObjectUUID = timestamp;
+
+        JSONMsg = { // is nog niet compleet
+          "UserMessage": {
+            "ActionType": action,
+            "UUID": new Date(UUIDTimeStamp).toISOString(),
+            "TimeOfAction": new Date().toISOString(),
+            ...objectData
+          }
+        }
         break;
 
       case 'UPDATE':
-
-        const result = await sfClient.sObject('Contact').retrieve(recordId, ['Id', 'UUID__c']);
-        if (!result.UUID__c) {
-          console.error("❌ Geen resultaat gevonden voor recordId:", recordId);
+        if (ignoreUpdate) {
+          ignoreUpdate = false;
+          console.log("🔕 [CDC] UPDATE event genegeerd na UUID update");
           return;
         }
-        ObjectUUID = result.UUID__c;
 
+        const resultUpd = await salesforceClient.sObject('Contact').retrieve(recordId);
+        if (!resultUpd.UUID__c) {
+          console.error("❌ Geen resultaat gevonden voor UUID van recordId:", recordId);
+          return;
+        }
+        UUIDTimeStamp = resultUpd.UUID__c;
+
+        JSONMsg = {
+          "UserMessage": {
+            "ActionType": action,
+            "UUID": new Date(UUIDTimeStamp).toISOString(),
+            "TimeOfAction": new Date().toISOString(),
+            "PhoneNumber": objectData.Phone,
+            "EmailAddress": objectData.Email
+          }
+        }
         break;
+
       case 'DELETE':
-        if (!ObjectUUID) {
-          console.error("❌ Geen UUID gevonden voor recordId:", recordId);
-          return;
+        // De UUID queryien van de record die verwijderd is (Speciale case -> recycle bin) (Dit werkt alleen als de Salesforce FLS read-only option is ingeschakeld voor de UUID)
+        const query = salesforceClient.sObject('Contact')
+            .select('UUID__c, Id')
+            .where({Id: recordId, IsDeleted: true})
+            .limit(1)
+            .scanAll(true);
+
+        const resultDel = await query.run();
+
+        UUIDTimeStamp = resultDel[0]?.UUID__c || null;
+
+        if (!UUIDTimeStamp) return console.error("❌ Geen UUID gevonden voor verwijderde record met Id:", recordId);
+
+        JSONMsg = {
+          "UserMessage": {
+            "ActionType": action,
+            "UUID": new Date(UUIDTimeStamp).toISOString(),
+            "TimeOfAction": new Date().toISOString()
+          }
         }
-        ObjectUUID = objectData.Id;
         break;
+
+      default:
+        return console.warn("⚠️Niet gehandelde actie gedetecteerd:", action);
     }
 
     /*TODO
-       1. Formateer DATA
+       1. Formateer DATA op basis van gevraagde XSD formaat
        2. Converteer naar XML
        3. Valideer XML op basis van XSD
        4. Verzend naar Queues met RabbitMQ
      */
-    console.log('📥Salesforce CDC Event ontvangen:', {action, objectData});
-    console.log("✅ UUID succesvol opgehaald: ", ObjectUUID);
+
+    console.log('📤 Salesforce Converted Message:', JSON.stringify(JSONMsg, null, 2));
   });
+
+  // RABBITMQ connection
+  // const amqpConn = await amqp.connect(`amqp://${process.env.RABBITMQ_USERNAME}:${process.env.RABBITMQ_PASSWORD}@${process.env.RABBITMQ_HOST}:${process.env.RABBITMQ_PORT}`);
+  // const channel = await amqpConn.createChannel();
+  // console.log("✅ Verbonden met RabbitMQ Kanaal");
 
   //   const { changeType, payload } = message;
   //   const action = changeType.toLowerCase(); // create | update | delete

@@ -37,6 +37,12 @@ class SalesforceClient {
   sObject(sObjectName) {
     return this.conn.sobject(sObjectName);
   }
+
+  async query(query) {
+    const result = await this.conn.query(query);
+    console.log('[QUERY] Salesforce:', result);
+    return result;
+  }
 }
 
 module.exports = SalesforceClient;
