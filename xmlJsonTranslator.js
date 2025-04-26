@@ -60,7 +60,7 @@ const mappings = {
                 account: {
                     id: payload.Id,
                     name: payload.Name,
-                    customUuid: payload.External_Id__c,
+                    customUuid: payload.UUID__c,
                 },
             },
         }),
