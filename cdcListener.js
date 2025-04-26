@@ -1,10 +1,10 @@
 require('dotenv').config();
-// const amqp = require('amqplib');
 
 const SalesforceClient = require("./salesforceClient");
 const {jsonToXml} = require("./xmlJsonTranslator");
+const amqp = require('amqplib');
 
-async function startCDCListener(salesforceClient) {
+async function startCDCListener(salesforceClient, rabbitMQChannel) {
 
   // Luister op de standaard CDC kanaal voor Contact
   const cdcClient = salesforceClient.createCDCClient();
@@ -18,7 +18,7 @@ async function startCDCListener(salesforceClient) {
     // Action ophalen (e.g. CREATE, UPDATE, DELETE)
     const action = message.payload.ChangeEventHeader.changeType;
 
-    console.log('📥Salesforce CDC Contact Event ontvangen: ', action);
+    console.log('📥 Salesforce CDC Contact Event ontvangen: ', action);
 
     // RecordId ophalen vanuit ChangeEventHeader
     let recordId;
@@ -116,46 +116,29 @@ async function startCDCListener(salesforceClient) {
        4. Verzend naar Queues met RabbitMQ
      */
 
+    // INSER STAP 2 & 3 HIER
+
+    const actionLower = action.toLowerCase();
+
     console.log('📤 Salesforce Converted Message:', JSON.stringify(JSONMsg, null, 2));
+
+    const exchangeName = 'user';
+
+    await rabbitMQChannel.assertExchange(exchangeName, 'topic', { durable: true });
+
+    // Publiceer op alle relevante queues
+    const targetBindings = [
+      `frontend.user.${actionLower}`,
+      `facturatie.user.${actionLower}`,
+      `kassa.user.${actionLower}`
+    ];
+
+    for (const routingKey of targetBindings) {
+      // Publish to the exchange with the appropriate routing key
+      rabbitMQChannel.publish(exchangeName, routingKey, Buffer.from(JSON.stringify(JSONMsg)));
+      console.log(`📤 Bericht verstuurd naar exchange "${exchangeName}" met routing key "${routingKey}"`);
+    }
   });
-
-  // RABBITMQ connection
-  // const amqpConn = await amqp.connect(`amqp://${process.env.RABBITMQ_USERNAME}:${process.env.RABBITMQ_PASSWORD}@${process.env.RABBITMQ_HOST}:${process.env.RABBITMQ_PORT}`);
-  // const channel = await amqpConn.createChannel();
-  // console.log("✅ Verbonden met RabbitMQ Kanaal");
-
-  //   const { changeType, payload } = message;
-  //   const action = changeType.toLowerCase(); // create | update | delete
-  //   const routingKey = `crm_user_${action}`;
-  //
-  //   const formattedMessage = {
-  //     uuid: payload.Id, // evt. External_Id__c
-  //     source: "salesforce",
-  //     action: action,
-  //     payload: {
-  //       FirstName: payload.FirstName,
-  //       LastName: payload.LastName,
-  //       Email: payload.Email
-  //     }
-  //   };
-  //
-  //   // Publiceer op alle relevante queues
-  //   const targetQueues = [
-  //     `frontend_user_${action}`,
-  //     `facturatie_user_${action}`,
-  //     `kassa_user_${action}`
-  //   ];
-  //
-  //   for (const q of targetQueues) {
-  //     // await channel.assertQueue(q, { durable: true });
-  //     // channel.sendToQueue(q, Buffer.from(JSON.stringify(formattedMessage)));
-  //     console.log(`📤 Bericht verstuurd naar ${q}`);
-  //   }
-  // });
-
-  // subscription.on('error', (err) => {
-  //   console.error('❌ CDC Listener Error:', err);
-  // });
 
   console.log('✅ Verbonden met Salesforce Streaming API');
 }
@@ -169,9 +152,14 @@ const sfClient = new SalesforceClient(
 );
 (async () => {
 
+  // RABBITMQ connection
+  const amqpConn = await amqp.connect(`amqp://${process.env.RABBITMQ_USERNAME}:${process.env.RABBITMQ_PASSWORD}@${process.env.RABBITMQ_HOST}:${process.env.RABBITMQ_PORT}`);
+  const channel = await amqpConn.createChannel();
+  console.log("✅ Verbonden met RabbitMQ Kanaal");
+
   await sfClient.login(); // 🔐 OAuth-login via jsforce
 
-  await startCDCListener(sfClient);
+  await startCDCListener(sfClient, channel);
 })();
 
 // module.exports = startCDCListener;
