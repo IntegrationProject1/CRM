@@ -215,9 +215,9 @@ module.exports = {
             await rabbitMQChannel.assertExchange(exchangeName, 'topic', { durable: true });
 
             const targetBindings = [
-                `frontend.eventrelation.${actionLower}`,
-                `facturatie.eventrelation.${actionLower}`,
-                `kassa.eventrelation.${actionLower}`
+                `frontend.event.${actionLower}`,
+                `facturatie.event.${actionLower}`,
+                `kassa.event.${actionLower}`
             ];
 
             for (const routingKey of targetBindings) {
