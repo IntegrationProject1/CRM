@@ -1,7 +1,7 @@
 require('dotenv').config();
 const amqp = require('amqplib');
 const SalesforceClient = require("./salesforceClient");
-const { jsonToXml, transformSalesforceToXml } = require("./xmlJsonTranslator");
+const { jsonToXml } = require("./xmlJsonTranslator");
 const validator = require("./xmlValidator");
 
 async function startCDCListener(salesforceClient, rabbitMQChannel) {
@@ -14,7 +14,6 @@ async function startCDCListener(salesforceClient, rabbitMQChannel) {
 
     console.log('📥 Salesforce CDC Contact Event ontvangen:', action);
 
-    // RecordId ophalen vanuit ChangeEventHeader
     let recordId;
     if (['CREATE', 'UPDATE', 'DELETE'].includes(action)) {
       recordId = ChangeEventHeader.recordIds?.[0];
@@ -23,30 +22,42 @@ async function startCDCListener(salesforceClient, rabbitMQChannel) {
 
     let UUIDTimeStamp;
     let JSONMsg;
+    let xmlMessage;
+    let xsdPath;
 
     switch (action) {
       case 'CREATE':
-        // Een UUID genereren voor de nieuwe record en deze in Salesforce bijwerken
         UUIDTimeStamp = new Date().getTime();
+        ignoreUpdate = true;
 
-        ignoreUpdate=true; // De volgende Update CDC negeren (vermijd dubbel bijwerken van UUID)
         try {
           await salesforceClient.updateUser(recordId, { UUID__c: UUIDTimeStamp });
-          console.log("✅ UUID successvol bijgewerkt");
+          console.log("✅ UUID succesvol bijgewerkt");
         } catch (err) {
           console.error("❌ Fout bij instellen UUID:", err.message);
           return;
         }
 
-        JSONMsg = { // is nog niet compleet
+        JSONMsg = {
           "UserMessage": {
             "ActionType": action,
             "UUID": new Date(UUIDTimeStamp).toISOString(),
             "TimeOfAction": new Date().toISOString(),
-            ...objectData
+            "EncryptedPassword": "", // verplicht veld volgens ons XSD stuctuur
+            "FirstName": objectData.FirstName || "",
+            "LastName": objectData.LastName || "",
+            "PhoneNumber": objectData.Phone || "",
+            "EmailAddress": objectData.Email || ""
           }
         };
 
+        xmlMessage = jsonToXml(JSONMsg.UserMessage, { rootName: 'UserMessage' });
+        xsdPath = './xsd/user_accountXSD/UserMessage.xsd';
+
+        if (!validator.validateXml(xmlMessage, xsdPath)) {
+          console.error('❌ XML Create niet geldig tegen XSD');
+          return;
+        }
         break;
 
       case 'UPDATE':
@@ -61,6 +72,7 @@ async function startCDCListener(salesforceClient, rabbitMQChannel) {
           console.error("❌ Geen UUID gevonden voor recordId:", recordId);
           return;
         }
+
         UUIDTimeStamp = resultUpd.UUID__c;
 
         JSONMsg = {
@@ -68,49 +80,60 @@ async function startCDCListener(salesforceClient, rabbitMQChannel) {
             "ActionType": action,
             "UUID": new Date(UUIDTimeStamp).toISOString(),
             "TimeOfAction": new Date().toISOString(),
-            "PhoneNumber": objectData.Phone,
-            "EmailAddress": objectData.Email
+            "EncryptedPassword": "", // VERPLICHT veld toevoegen!
+            "PhoneNumber": objectData.Phone || "",
+            "EmailAddress": objectData.Email || ""
           }
         };
+
+        xmlMessage = jsonToXml(JSONMsg.UserMessage, { rootName: 'UserMessage' }); // hier moet gechecked worden
+        xsdPath = './xsd/user_accountXSD/UserMessage.xsd';// hier moet gechecked worden
+
+        if (!validator.validateXml(xmlMessage, xsdPath)) {
+          console.error('❌ XML Update niet geldig tegen XSD');
+          return;
+        }
         break;
 
       case 'DELETE':
-        // De UUID queryien van de record die verwijderd is (Speciale case -> recycle bin) (Dit werkt alleen als de Salesforce FLS read-only option is ingeschakeld voor de UUID)
         const query = salesforceClient.sObject('Contact')
             .select('UUID__c, Id')
-            .where({Id: recordId, IsDeleted: true})
+            .where({ Id: recordId, IsDeleted: true })
             .limit(1)
             .scanAll(true);
+
         const resultDel = await query.run();
         UUIDTimeStamp = resultDel[0]?.UUID__c || null;
 
-        if (!UUIDTimeStamp) return console.error("❌ Geen UUID gevonden voor verwijderde record met Id:", recordId);
+        if (!UUIDTimeStamp) {
+          console.error("❌ Geen UUID gevonden voor verwijderde record:", recordId);
+          return;
+        }
 
         JSONMsg = {
           "UserMessage": {
             "ActionType": action,
             "UUID": new Date(UUIDTimeStamp).toISOString(),
-            "TimeOfAction": new Date().toISOString()
+            "TimeOfAction": new Date().toISOString(),
+            "EncryptedPassword": ""
+            // Bij DELETE geen extra data nodig, maar EncryptedPassword MOET aanwezig zijn
           }
         };
-        // convetor en daarna xsd valt toevoegen
-        // 2. Converteer naar XML
-        // 3. Valideer XML op basis van XSD
+
+        xmlMessage = jsonToXml(JSONMsg.UserMessage, { rootName: 'UserMessage' }); // hier moet gechecked worden
+        xsdPath = './xsd/user_accountXSD/UserMessage.xsd';
+
+
+        if (!validator.validateXml(xmlMessage, xsdPath)) {
+          console.error('❌ XML Delete niet geldig tegen XSD');
+          return;
+        }
         break;
 
       default:
         console.warn("⚠️ Niet gehandelde actie:", action);
         return;
     }
-
-    /*TODO
-       1. Formateer DATA op basis van gevraagde XSD formaat
-       2. Converteer naar XML
-       3. Valideer XML op basis van XSD
-       4. Verzend naar Queues met RabbitMQ
-     */
-
-    // INSER STAP 2 & 3 HIER
 
     const actionLower = action.toLowerCase();
 
@@ -120,7 +143,6 @@ async function startCDCListener(salesforceClient, rabbitMQChannel) {
 
     await rabbitMQChannel.assertExchange(exchangeName, 'topic', { durable: true });
 
-    // Publiceer op alle relevante queues
     const targetBindings = [
       `frontend.user.${actionLower}`,
       `facturatie.user.${actionLower}`,
@@ -128,7 +150,6 @@ async function startCDCListener(salesforceClient, rabbitMQChannel) {
     ];
 
     for (const routingKey of targetBindings) {
-      // Publish to the exchange with the appropriate routing key
       rabbitMQChannel.publish(exchangeName, routingKey, Buffer.from(JSON.stringify(JSONMsg)));
       console.log(`📤 Bericht verstuurd naar exchange "${exchangeName}" met routing key "${routingKey}"`);
     }
@@ -137,23 +158,21 @@ async function startCDCListener(salesforceClient, rabbitMQChannel) {
   console.log('✅ Verbonden met Salesforce Streaming API');
 }
 
-// SalesForce client direct geconfigureerd om sneller te testen (word later verwijderd, en gestart vanuit index.js)
+// Instantieer Salesforce Client + RabbitMQ Connection
 const sfClient = new SalesforceClient(
     process.env.SALESFORCE_USERNAME,
     process.env.SALESFORCE_PASSWORD,
     process.env.SALESFORCE_TOKEN,
     process.env.SALESFORCE_LOGIN_URL
 );
-(async () => {
 
-  // RABBITMQ connection
+(async () => {
   const amqpConn = await amqp.connect(`amqp://${process.env.RABBITMQ_USERNAME}:${process.env.RABBITMQ_PASSWORD}@${process.env.RABBITMQ_HOST}:${process.env.RABBITMQ_PORT}`);
   const channel = await amqpConn.createChannel();
   console.log("✅ Verbonden met RabbitMQ Kanaal");
 
-  await sfClient.login(); // 🔐 OAuth-login via jsforce
-
+  await sfClient.login();
   await startCDCListener(sfClient, channel);
 })();
 
-// module.exports = startCDCListener;
+
