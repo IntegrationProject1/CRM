@@ -11,8 +11,7 @@
                 <xs:element name="StartDateTime" type="xs:dateTime"/>
                 <xs:element name="EndDateTime" type="xs:dateTime"/>
                 <xs:element name="Location" type="xs:string"/>
-                <xs:element name="Organisator" type="xs:string"/>
-                <xs:element name="Capacity" type="xs:positiveInteger"/>
+                <xs:element name="Organiser" type="xs:string"/>
                 <xs:element name="EventType" type="xs:string"/>
                 <xs:element name="RegisteredUsers" minOccurs="0">
                     <xs:complexType>

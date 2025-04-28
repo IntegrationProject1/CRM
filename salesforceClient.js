@@ -10,7 +10,7 @@ class SalesforceClient {
   }
 
   async login() {
-    this.conn = new jsforce.Connection({ loginUrl: this.loginUrl });
+    this.conn = new jsforce.Connection({loginUrl: this.loginUrl});
     await this.conn.login(this.username, this.password + this.token);
     console.log('✅ Ingelogd bij Salesforce via jsforce');
   }
@@ -25,7 +25,7 @@ class SalesforceClient {
   }
 
   async updateUser(id, data) {
-    const result = await this.conn.sobject('Contact').update({ Id: id, ...data });
+    const result = await this.conn.sobject('Contact').update({Id: id, ...data});
     console.log('[UPDATE] Salesforce:', result);
   }
 
@@ -43,6 +43,32 @@ class SalesforceClient {
     console.log('[QUERY] Salesforce:', result);
     return result;
   }
+
+// EVENT CRUD OPERATIONS
+
+
+// Retrieve an Event by Id
+  async getEvent(id) {
+    const result = await this.conn.sobject('Event').retrieve(id);
+    return result;
+  }
+
+// Update an Event by Id
+  async updateEvent(id, data) {
+    const result = await this.conn.sobject('Event').update({ Id: id, ...data });
+    return result;
+  }
+
+// Retrieve a deleted Event by Id (use query, not queryAll)
+  async getDeletedEvent(id) {
+    const result = await this.conn.query(
+        `SELECT EventID__c, Subject, StartDateTime, EndDateTime FROM Event WHERE Id = '${id}' AND IsDeleted = true`
+    );
+    return result.records[0];
+  }
+
+
+
 }
 
 module.exports = SalesforceClient;

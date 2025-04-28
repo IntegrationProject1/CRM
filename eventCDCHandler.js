@@ -1,251 +1,191 @@
+require('dotenv').config();
+const amqp = require('amqplib');
 const SalesforceClient = require("./salesforceClient");
 const { jsonToXml } = require("./xmlJsonTranslator");
 const validator = require("./xmlValidator");
 
-module.exports = {
-    startEventCDCListener: async function(salesforceClient, rabbitMQChannel) {
-        const cdcClient = salesforceClient.createCDCClient();
-        const exchangeName = 'events'; // SAME EXCHANGE FOR BOTH
+// Helper for xs:dateTime
+function fixDateTime(dt) {
+    if (!dt) return '';
+    if (dt.endsWith('+0000')) return dt.replace('+0000', 'Z');
+    return dt.replace(/([+-]\d{2})(\d{2})$/, '$1:$2');
+}
 
-        // === EventChangeEvent Handler ===
-        cdcClient.subscribe('/data/EventChangeEvent', async function (message) {
-            const { ChangeEventHeader, ...objectData } = message.payload;
-            const action = ChangeEventHeader.changeType;
+async function startEventHandlerCDC(salesforceClient, rabbitMQChannel) {
+    const cdcClient = salesforceClient.createCDCClient();
+    let ignoreUpdate = false;
 
-            console.log('📥 Salesforce CDC Event Event ontvangen:', action);
+    cdcClient.subscribe('/data/EventChangeEvent', async function (message) {
+        const { ChangeEventHeader, ...eventData } = message.payload;
+        const action = ChangeEventHeader.changeType;
 
-            let recordId;
-            if (['CREATE', 'UPDATE', 'DELETE'].includes(action)) {
-                recordId = ChangeEventHeader.recordIds?.[0];
-                if (!recordId) return console.error('❌ Geen recordId gevonden.');
-            }
+        console.log('📥 Salesforce CDC Event ontvangen:', action);
 
-            let UUIDTimeStamp;
-            let JSONMsg;
-            let xmlMessage;
-            let xsdPath;
+        let recordId;
+        if (['CREATE', 'UPDATE', 'DELETE'].includes(action)) {
+            recordId = ChangeEventHeader.recordIds?.[0];
+            if (!recordId) return console.error('❌ Geen recordId gevonden.');
+        }
 
-            // Wanneer nodig, registreerde gebruikers (EventRelations) ophalen
-            const registeredUsers = action !== 'DELETE' ? await getRegisteredUsers(salesforceClient, recordId) : [];
+        let eventIDValue, eventRecord, payload, xmlMessage, xsdPath, rootName;
 
+        try {
             switch (action) {
                 case 'CREATE':
-                    UUIDTimeStamp = new Date().getTime();
+                    eventIDValue = new Date().toISOString();
+                    ignoreUpdate = true;
+                    await salesforceClient.updateEvent(recordId, { EventID__c: eventIDValue });
+                    console.log(`✅ EventID__c ${eventIDValue} succesvol bijgewerkt op Event ${recordId}`);
+                    eventRecord = await salesforceClient.getEvent(recordId);
 
-                    try {
-                        // UUID instellen op Event record
-                        await salesforceClient.sObject('Event').update({
-                            Id: recordId,
-                            UUID__c: UUIDTimeStamp
-                        });
-                        console.log("✅ UUID succesvol bijgewerkt op Event");
-                    } catch (err) {
-                        console.error("❌ Fout bij instellen UUID:", err.message);
-                        return;
-                    }
-
-                    // Event details ophalen
-                    const eventData = await salesforceClient.sObject('Event').retrieve(recordId);
-
-                    JSONMsg = {
-                        "CreateEvent": {
-                            "UUID": new Date(UUIDTimeStamp).toISOString(),
-                            "Name": eventData.Subject || "",
-                            "Description": eventData.Description || "",
-                            "StartDateTime": eventData.StartDateTime || new Date().toISOString(),
-                            "EndDateTime": eventData.EndDateTime || new Date().toISOString(),
-                            "Location": eventData.Location || "",
-                            "Organisator": eventData.OwnerId || "",
-                            "Capacity": parseInt(eventData.MaxAttendees || 1),
-                            "EventType": eventData.Type || "Standard",
-                            "RegisteredUsers": {
-                                "User": registeredUsers
-                            }
-                        }
+                    // Build payload in XSD order
+                    payload = {
+                        UUID: eventIDValue,
+                        Name: eventRecord?.Subject || eventData.Subject || "",
+                        Description: eventRecord?.Description || eventData.Description || "",
+                        StartDateTime: fixDateTime(eventRecord?.StartDateTime || eventData.StartDateTime || ""),
+                        EndDateTime: fixDateTime(eventRecord?.EndDateTime || eventData.EndDateTime || ""),
+                        Location: eventRecord?.Location || eventData.Location || "",
+                        Organiser: eventRecord?.Organiser || eventData.Organiser || ""
                     };
-
-                    xmlMessage = jsonToXml(JSONMsg.CreateEvent, { rootName: 'CreateEvent' });
+                    // Only include Capacity if > 0
+                    const capacityValueCreate = eventRecord?.Capacity || eventData.Capacity;
+                    if (capacityValueCreate > 0) payload.Capacity = capacityValueCreate;
+                    payload.EventType = eventRecord?.EventType || eventData.EventType || "";
+                    // Only include RegisteredUsers if present
+                    const usersCreate = eventRecord?.RegisteredUsers || eventData.RegisteredUsers;
+                    if (usersCreate && Array.isArray(usersCreate) && usersCreate.length > 0) {
+                        payload.RegisteredUsers = { User: usersCreate };
+                    }
+                    rootName = "CreateEvent";
                     xsdPath = './xsd/eventsXSD/CreateEvent.xsd';
                     break;
 
                 case 'UPDATE':
-                    const eventToUpdate = await salesforceClient.sObject('Event').retrieve(recordId);
-                    UUIDTimeStamp = eventToUpdate.UUID__c;
-
-                    if (!UUIDTimeStamp) {
-                        console.error("❌ Geen UUID gevonden voor Event:", recordId);
+                    if (ignoreUpdate) {
+                        ignoreUpdate = false;
+                        console.log("🔕 [CDC] UPDATE event genegeerd na EventID__c update");
                         return;
                     }
+                    eventRecord = await salesforceClient.getEvent(recordId);
+                    if (!eventRecord || !eventRecord.EventID__c) {
+                        console.error("❌ EventID__c niet gevonden voor recordId:", recordId);
+                        return;
+                    }
+                    eventIDValue = eventRecord.EventID__c;
 
-                    // Gewijzigde velden bepalen
-                    const changedFields = [];
-                    for (const field in objectData) {
-                        changedFields.push({
-                            "Name": field,
-                            "NewValue": String(objectData[field] || "")
+                    // Prepare fields as array of { Name, NewValue }
+                    const fieldsToUpdateArray = [];
+
+                function addField(name, value) {
+                    if (value !== undefined && value !== null) {
+                        fieldsToUpdateArray.push({
+                            Name: name,
+                            NewValue: String(value)
                         });
                     }
+                }
 
-                    JSONMsg = {
-                        "UpdateEvent": {
-                            "UUID": new Date(UUIDTimeStamp).toISOString(),
-                            "FieldsToUpdate": {
-                                "Field": changedFields
-                            }
+                    addField("Name", eventRecord?.Subject || eventData.Subject);
+                    addField("Description", eventRecord?.Description || eventData.Description);
+                    addField("StartDateTime", fixDateTime(eventRecord?.StartDateTime || eventData.StartDateTime));
+                    addField("EndDateTime", fixDateTime(eventRecord?.EndDateTime || eventData.EndDateTime));
+                    addField("Location", eventRecord?.Location || eventData.Location);
+                    addField("Organiser", eventRecord?.Organiser || eventData.Organiser);
+
+                    const capacityValueUpdate = eventRecord?.Capacity || eventData.Capacity;
+                    if (capacityValueUpdate > 0) {
+                        addField("Capacity", capacityValueUpdate);
+                    }
+
+                    addField("EventType", eventRecord?.EventType || eventData.EventType);
+
+                    const usersUpdate = eventRecord?.RegisteredUsers || eventData.RegisteredUsers;
+                    if (usersUpdate && Array.isArray(usersUpdate) && usersUpdate.length > 0) {
+                        // You may need to serialize users as string or handle differently depending on your XSD
+                        addField("RegisteredUsers", JSON.stringify(usersUpdate));
+                    }
+
+                    payload = {
+                        UUID: fixDateTime(eventIDValue),
+                        FieldsToUpdate: {
+                            Field: fieldsToUpdateArray
                         }
                     };
-
-                    xmlMessage = jsonToXml(JSONMsg.UpdateEvent, { rootName: 'UpdateEvent' });
+                    rootName = "UpdateEvent";
                     xsdPath = './xsd/eventsXSD/UpdateEvent.xsd';
                     break;
 
+
                 case 'DELETE':
-                    const deletedEvent = await salesforceClient.sObject('Event')
-                        .select('UUID__c')
+                    // Use the jsforce sObject query pattern for deleted Events
+                    const query = salesforceClient.sObject('Event')
+                        .select('EventID__c')
                         .where({ Id: recordId, IsDeleted: true })
                         .limit(1)
-                        .scanAll(true)
-                        .run();
+                        .scanAll(true);
 
-                    UUIDTimeStamp = deletedEvent[0]?.UUID__c;
+                    const resultDel = await query.run();
+                    const eventDel = resultDel[0];
 
-                    if (!UUIDTimeStamp) {
-                        console.error("❌ Geen UUID gevonden voor Event:", recordId);
+                    if (!eventDel?.EventID__c) {
+                        console.error("❌ EventID__c niet gevonden voor verwijderde record:", recordId);
                         return;
                     }
 
-                    JSONMsg = {
-                        "DeleteEvent": {
-                            "UUID": UUIDTimeStamp
-                        }
+                    eventIDValue = eventDel.EventID__c;
+                    payload = {
+                        UUID: eventIDValue
                     };
 
-                    xmlMessage = jsonToXml(JSONMsg.DeleteEvent, { rootName: 'DeleteEvent' });
+                    rootName = "DeleteEvent";
                     xsdPath = './xsd/eventsXSD/DeleteEvent.xsd';
                     break;
 
-                default:
-                    console.warn("⚠️ Niet gehandelde actie:", action);
-                    return;
             }
+
+            // Build message and XML
+            const JSONMsg = { [rootName]: payload };
+            xmlMessage = jsonToXml(JSONMsg[rootName], { rootName });
 
             if (!validator.validateXml(xmlMessage, xsdPath)) {
                 console.error(`❌ XML ${action} niet geldig tegen XSD`);
                 return;
             }
 
-            const actionLower = action.toLowerCase();
-            console.log('📤 Salesforce Converted Event Message:', JSON.stringify(JSONMsg, null, 2));
-
+            // Publish to RabbitMQ
+            const exchangeName = 'event';
             await rabbitMQChannel.assertExchange(exchangeName, 'topic', { durable: true });
 
             const targetBindings = [
-                `frontend.event.${actionLower}`,
-                `facturatie.event.${actionLower}`,
-                `kassa.event.${actionLower}`
+                `frontend.event.${action.toLowerCase()}`
             ];
 
             for (const routingKey of targetBindings) {
                 rabbitMQChannel.publish(exchangeName, routingKey, Buffer.from(JSON.stringify(JSONMsg)));
                 console.log(`📤 Bericht verstuurd naar exchange "${exchangeName}" met routing key "${routingKey}"`);
             }
-        });
+        } catch (error) {
+            console.error(`❌ Fout tijdens verwerken ${action} event:`, error.message);
+        }
+    });
 
-        // === EventRelationChangeEvent Handler ===
-        cdcClient.subscribe('/data/EventRelationChangeEvent', async function (message) {
-            const { ChangeEventHeader, ...objectData } = message.payload;
-            const action = ChangeEventHeader.changeType;
-
-            console.log('📥 Salesforce CDC EventRelation Event ontvangen:', action);
-
-            let recordId;
-            if (['CREATE', 'UPDATE', 'DELETE'].includes(action)) {
-                recordId = ChangeEventHeader.recordIds?.[0];
-                if (!recordId) return console.error('❌ Geen recordId gevonden.');
-            }
-
-            let JSONMsg;
-            let xmlMessage;
-            let xsdPath;
-
-            switch (action) {
-                case 'CREATE':
-                case 'UPDATE':
-                    // EventRelation details ophalen
-                    const relationData = await salesforceClient.sObject('EventRelation').retrieve(recordId);
-
-                    JSONMsg = {
-                        "EventRelationMessage": {
-                            "ActionType": action,
-                            "EventId": relationData.EventId || "",
-                            "RelationId": relationData.RelationId || "",
-                            "RelationType": relationData.RelationType || ""
-                        }
-                    };
-
-                    xmlMessage = jsonToXml(JSONMsg.EventRelationMessage, { rootName: 'EventRelationMessage' });
-                    xsdPath = './xsd/eventRelationXSD/EventRelationMessage.xsd';
-                    break;
-
-                case 'DELETE':
-                    JSONMsg = {
-                        "EventRelationMessage": {
-                            "ActionType": action,
-                            "EventRelationId": recordId || ""
-                        }
-                    };
-
-                    xmlMessage = jsonToXml(JSONMsg.EventRelationMessage, { rootName: 'EventRelationMessage' });
-                    xsdPath = './xsd/eventRelationXSD/EventRelationMessage.xsd';
-                    break;
-
-                default:
-                    console.warn("⚠️ Niet gehandelde actie:", action);
-                    return;
-            }
-
-            if (!validator.validateXml(xmlMessage, xsdPath)) {
-                console.error(`❌ XML ${action} niet geldig tegen XSD`);
-                return;
-            }
-
-            const actionLower = action.toLowerCase();
-            console.log('📤 Salesforce Converted EventRelation Message:', JSON.stringify(JSONMsg, null, 2));
-
-            await rabbitMQChannel.assertExchange(exchangeName, 'topic', { durable: true });
-
-            const targetBindings = [
-                `frontend.event.${actionLower}`,
-                `facturatie.event.${actionLower}`,
-                `kassa.event.${actionLower}`
-            ];
-
-            for (const routingKey of targetBindings) {
-                rabbitMQChannel.publish(exchangeName, routingKey, Buffer.from(JSON.stringify(JSONMsg)));
-                console.log(`📤 Bericht verstuurd naar exchange "${exchangeName}" met routing key "${routingKey}"`);
-            }
-        });
-        console.log('✅ Verbonden met Salesforce Streaming API (Events)');
-    }
-};
-
-// Helper functie om geregistreerde gebruikers op te halen
-async function getRegisteredUsers(salesforceClient, eventId) {
-    try {
-        // EventRelation records ophalen
-        const relations = await salesforceClient.query(`
-            SELECT Id, RelationId, Relation.Name, Relation.Type
-            FROM EventRelation
-            WHERE EventId = '${eventId}'
-        `);
-
-        // Vertaal naar het verwachte formaat volgens XSD
-        return relations.records.map(relation => ({
-            "UUID": relation.RelationId,
-            "Name": relation.Relation.Name || "Onbekend"
-        }));
-    } catch (error) {
-        console.error("❌ Fout bij ophalen EventRelations:", error.message);
-        return [];
-    }
+    console.log('✅ Verbonden met Salesforce Streaming API voor EventChangeEvent');
 }
+
+// Instantieer Salesforce Client + RabbitMQ Connection
+const sfClient = new SalesforceClient(
+    process.env.SALESFORCE_USERNAME,
+    process.env.SALESFORCE_PASSWORD,
+    process.env.SALESFORCE_TOKEN,
+    process.env.SALESFORCE_LOGIN_URL
+);
+
+(async () => {
+    const amqpConn = await amqp.connect(process.env.RABBITMQ_URL);
+    const channel = await amqpConn.createChannel();
+    console.log("✅ Verbonden met RabbitMQ Kanaal");
+
+    await sfClient.login();
+    await startEventHandlerCDC(sfClient, channel);
+})();

@@ -32,7 +32,7 @@ module.exports = async function createEventConsumer(channel, exchange) {
                     StartDateTime: event.StartDateTime[0],
                     EndDateTime: event.EndDateTime[0],
                     Location: event.Location[0],
-                    Organisator: event.Organisator[0],
+                    Organiser: event.Organiser[0],
                     Capacity: parseInt(event.Capacity[0], 10),
                     EventType: event.EventType[0],
                     RegisteredUsers: event.RegisteredUsers?.[0]?.User?.map(user => ({
