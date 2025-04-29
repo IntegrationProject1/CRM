@@ -1,5 +1,7 @@
 require('dotenv').config();
 const amqp               = require('amqplib');
+const os                 = require('os');
+const ContactCDCHandler = require('./ContactCDCHandler');
 const SalesforceClient   = require('./salesforceClient');
 const createUserConsumer = require('./consumers/createUserConsumer');
 const updateUserConsumer = require('./consumers/updateUserConsumer');
@@ -9,39 +11,45 @@ const startHeartbeat     = require('./publisher/heartbeat'); // ✅ netjes uitbe
 (async () => {
   try {
     // ─── 1️⃣ RabbitMQ connectie & exchanges ──────────────────────────────
-    const conn = await amqp.connect({
+    const conn    = await amqp.connect({
       protocol: 'amqp',
       hostname: process.env.RABBITMQ_HOST,
-      port:     +process.env.RABBITMQ_PORT,
+      port:     process.env.RABBITMQ_PORT,
       username: process.env.RABBITMQ_USERNAME,
       password: process.env.RABBITMQ_PASSWORD,
       vhost:    '/'
     });
     const channel = await conn.createChannel();
-
-    const hbX   = process.env.RABBITMQ_EXCHANGE_HEARTBEAT;
-    const crudX = process.env.RABBITMQ_EXCHANGE_CRUD;
-
-    await channel.assertExchange(hbX,   'direct', { durable: true });
-    await channel.assertExchange(crudX, 'direct', { durable: true });
     console.log('✅ Verbonden met RabbitMQ');
 
-    // ─── 2️⃣ Start Heartbeat service ───────────────────────────────────────
-    startHeartbeat(channel, hbX, 'CRM_Service'); // ✅ nu perfect centraal geregeld
-
-    // ─── 3️⃣ Login bij Salesforce via jsforce ──────────────────────────────
+    // ─── 2️⃣ Login bij Salesforce via jsforce ──────────────────────────────
     const sfClient = new SalesforceClient(
-      process.env.SALESFORCE_USERNAME,
-      process.env.SALESFORCE_PASSWORD,
-      process.env.SALESFORCE_TOKEN,
-      process.env.SALESFORCE_LOGIN_URL
+        process.env.SALESFORCE_USERNAME,
+        process.env.SALESFORCE_PASSWORD,
+        process.env.SALESFORCE_TOKEN,
+        process.env.SALESFORCE_LOGIN_URL
     );
-    await sfClient.login();
+    await sfClient.login(); // 🔐 OAuth-login via jsforce
 
-    // ─── 4️⃣ Start de consumers ────────────────────────────────────────────
-    await createUserConsumer(channel, sfClient, crudX);
-    await updateUserConsumer(channel, sfClient, crudX);
-    await deleteUserConsumer(channel, sfClient, crudX);
+    // ─── 3️⃣ Start de consumers ────────────────────────────────────────────
+    await channel.assertExchange("", 'direct', { durable: true });
+    await createUserConsumer(channel, sfClient, "");
+
+    await channel.assertExchange("", 'direct', { durable: true });
+    await updateUserConsumer(channel, sfClient, "");
+
+    await channel.assertExchange("", 'direct', { durable: true });
+    await deleteUserConsumer(channel, sfClient, "");
+
+
+    // ─── 4️⃣ Start de CDC listener ──────────────────────────────────────
+    const cdcClient = sfClient.createCDCClient();
+
+    cdcClient.subscribe('/data/ContactChangeEvent', async function (message) {
+      await ContactCDCHandler(message, sfClient, channel);
+    });
+
+    startHeartbeat(channel, startHeartbeat, 'CRM_Service'); // ✅ nu perfect centraal geregeld
 
   } catch (err) {
     console.error('❌ Fout bij opstarten:', err.response?.data || err.message);
