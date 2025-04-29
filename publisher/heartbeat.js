@@ -18,7 +18,7 @@ function startHeartbeat(channel, exchangeName, serviceName = 'CRM_Service') {
 
         channel.publish(exchangeName, '', Buffer.from(xml));
         console.log('📡 Geldige Heartbeat verzonden:\n', xml);
-    }, 5000); // elke 5 seconden
+    }, 1000); //
 }
 
 module.exports = startHeartbeat;
