@@ -32,14 +32,14 @@ const startHeartbeat     = require('./publisher/heartbeat'); // ✅ netjes uitbe
     await sfClient.login(); // 🔐 OAuth-login via jsforce
 
     // ─── 3️⃣ Start de consumers ────────────────────────────────────────────
-    await channel.assertExchange("", 'direct', { durable: true });
-    await createUserConsumer(channel, sfClient, "");
-
-    await channel.assertExchange("", 'direct', { durable: true });
-    await updateUserConsumer(channel, sfClient, "");
-
-    await channel.assertExchange("", 'direct', { durable: true });
-    await deleteUserConsumer(channel, sfClient, "");
+    // await channel.assertExchange("", 'direct', { durable: true });
+    // await createUserConsumer(channel, sfClient, "");
+    //
+    // await channel.assertExchange("", 'direct', { durable: true });
+    // await updateUserConsumer(channel, sfClient, "");
+    //
+    // await channel.assertExchange("", 'direct', { durable: true });
+    // await deleteUserConsumer(channel, sfClient, "");
 
 
     // ─── 4️⃣ Start de CDC listener ──────────────────────────────────────
@@ -49,10 +49,15 @@ const startHeartbeat     = require('./publisher/heartbeat'); // ✅ netjes uitbe
       await ContactCDCHandler(message, sfClient, channel);
     });
 
-    startHeartbeat(channel, startHeartbeat, 'CRM_Service'); // ✅ nu perfect centraal geregeld
+
+    let heartBeatQueue = process.env.RABBITMQ_EXCHANGE_HEARTBEAT;
+
+    startHeartbeat(channel, heartBeatQueue, 'CRM_Service'); // ✅ nu perfect centraal geregeld
 
   } catch (err) {
     console.error('❌ Fout bij opstarten:', err.response?.data || err.message);
     process.exit(1);
   }
 })();
+
+

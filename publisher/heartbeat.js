@@ -2,7 +2,10 @@ const os = require('os');
 const path = require('path');
 const { validateXml } = require('../xmlValidator');
 
-function startHeartbeat(channel, exchangeName, serviceName = 'CRM_Service') {
+
+async function startHeartbeat(channel, exchangeName, serviceName = 'CRM_Service') {
+   await channel.assertExchange(exchangeName, 'direct', { durable: true });
+
     setInterval(() => {
         const xml = `
 <Heartbeat>
