@@ -52,7 +52,7 @@ async function startCDCListener(salesforceClient, rabbitMQChannel) {
         };
 
         xmlMessage = jsonToXml(JSONMsg.UserMessage, { rootName: 'UserMessage' });
-        xsdPath = './xsd/user_accountXSD/UserMessage.xsd';
+        xsdPath = './xsd/userXSD/UserCreate.xsd';
 
         if (!validator.validateXml(xmlMessage, xsdPath)) {
           console.error('❌ XML Create niet geldig tegen XSD');
@@ -87,7 +87,7 @@ async function startCDCListener(salesforceClient, rabbitMQChannel) {
         };
 
         xmlMessage = jsonToXml(JSONMsg.UserMessage, { rootName: 'UserMessage' }); // hier moet gechecked worden
-        xsdPath = './xsd/user_accountXSD/UserMessage.xsd';// hier moet gechecked worden
+        xsdPath = './xsd/userXSD/UserCreate.xsd';// hier moet gechecked worden
 
         if (!validator.validateXml(xmlMessage, xsdPath)) {
           console.error('❌ XML Update niet geldig tegen XSD');
@@ -121,7 +121,7 @@ async function startCDCListener(salesforceClient, rabbitMQChannel) {
         };
 
         xmlMessage = jsonToXml(JSONMsg.UserMessage, { rootName: 'UserMessage' }); // hier moet gechecked worden
-        xsdPath = './xsd/user_accountXSD/UserMessage.xsd';
+        xsdPath = './xsd/userXSD/UserCreate.xsd';
 
 
         if (!validator.validateXml(xmlMessage, xsdPath)) {
