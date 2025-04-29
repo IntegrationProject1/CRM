@@ -6,6 +6,8 @@ const createUserConsumer = require('./consumers/createUserConsumer');
 const updateUserConsumer = require('./consumers/updateUserConsumer');
 const deleteUserConsumer = require('./consumers/deleteUserConsumer');
 
+const startHeartbeat = require('./publisher/heartbeat');
+
 (async () => {
   try {
     // ─── 1️⃣ RabbitMQ connectie & exchanges ──────────────────────────────
@@ -21,6 +23,9 @@ const deleteUserConsumer = require('./consumers/deleteUserConsumer');
 
     const hbX   = process.env.RABBITMQ_EXCHANGE_HEARTBEAT;
     const crudX = process.env.RABBITMQ_EXCHANGE_CRUD;
+
+    // ─── 4️⃣ Heartbeat starten ─────────────────────────────────────────────
+    startHeartbeat(channel, hbX, 'CRM_Service');
 
     await channel.assertExchange(hbX,   'fanout', { durable: true });
     await channel.assertExchange(crudX, 'direct', { durable: true });
@@ -45,17 +50,9 @@ const deleteUserConsumer = require('./consumers/deleteUserConsumer');
       const timestamp = new Date().toISOString();
       const hostname  = os.hostname();
       const xml = `
-<Heartbeat>
-  <ServiceName>crm-service</ServiceName>
-  <Status>Online</Status>
-  <Timestamp>${timestamp}</Timestamp>
-  <HeartBeatInterval>1</HeartBeatInterval>
-  <Metadata>
-    <Version>1.0.0</Version>
-    <Host>${hostname}</Host>
-    <Environment>Production</Environment>
-  </Metadata>
-</Heartbeat>`.trim();
+    <Heartbeat>
+        <ServiceName>{ServiceName}</ServiceName>
+    </Heartbeat>.trim()`;
 
       channel.publish(hbX, '', Buffer.from(xml));
       console.log('📡 Heartbeat verzonden:\n', xml);
