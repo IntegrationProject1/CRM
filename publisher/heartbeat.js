@@ -1,7 +1,13 @@
-const os = require('os');
 const path = require('path');
 const { validateXml } = require('../xmlValidator');
 
+/**
+ * Starts sending periodic heartbeat messages to a RabbitMQ exchange.
+ * @param {Object} channel - RabbitMQ channel to publish messages.
+ * @param {string} exchangeName - Name of the exchange to publish to.
+ * @param {string} [serviceName='CRM_Service'] - Service name (optional).
+ * @returns {Promise<void>} Resolves when exchange is set and interval starts.
+ */
 
 async function startHeartbeat(channel, exchangeName, serviceName = 'CRM_Service') {
    await channel.assertExchange(exchangeName, 'direct', { durable: true });
@@ -21,7 +27,7 @@ async function startHeartbeat(channel, exchangeName, serviceName = 'CRM_Service'
 
         channel.publish(exchangeName, '', Buffer.from(xml));
         console.log('📡 Geldige Heartbeat verzonden:\n', xml);
-    }, 1000); //
+    }, 1000); // 1000 = 1 seconde
 }
 
 module.exports = startHeartbeat;
