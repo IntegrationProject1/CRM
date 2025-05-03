@@ -36,7 +36,7 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
          const UUIDTimeStamp = new Date(objectData.UUID).getTime();
 
          let SalesforceObjId;
-         if (['UPDATE', 'DELETE'].includes(action)) {
+         if (['update', 'delete'].includes(action)) {
             // retrieve Salesforce ID from UUID
             const query = salesforceClient.sObject("Contact")
                .select("Id")
@@ -89,7 +89,6 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
                   };
 
                   await salesforceClient.createUser(JSONMsg);
-                  channel.ack(msg);
                   console.log("✅ Gebruiker aangemaakt in Salesforce");
                } catch (err) {
                   channel.nack(msg, false, false);
@@ -110,7 +109,6 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
                   };
 
                   await salesforceClient.updateUser(SalesforceObjId, JSONMsg);
-                  channel.ack(msg);
                   console.log("✅ Gebruiker geüpdatet in Salesforce");
                } catch (err) {
                   channel.nack(msg, false, false);
@@ -122,7 +120,6 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
             case "delete":
                try {
                   await salesforceClient.deleteUser(SalesforceObjId);
-                  channel.ack(msg);
                   console.log("✅ Gebruiker verwijderd uit Salesforce");
                } catch (err) {
                   channel.nack(msg, false, false);
