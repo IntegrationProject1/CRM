@@ -6,7 +6,7 @@ const SalesforceClient   = require('./salesforceClient');
 const createUserConsumer = require('./consumers/createUserConsumer');
 const updateUserConsumer = require('./consumers/updateUserConsumer');
 const deleteUserConsumer = require('./consumers/deleteUserConsumer');
-const startHeartbeat     = require('./publisher/heartbeat'); // ✅ netjes uitbesteed
+const startHeartbeat     = require('./publisher/heartbeat');
 
 (async () => {
   try {
@@ -52,7 +52,7 @@ const startHeartbeat     = require('./publisher/heartbeat'); // ✅ netjes uitbe
 
     let heartBeatQueue = process.env.RABBITMQ_EXCHANGE_HEARTBEAT;
 
-    startHeartbeat(channel, heartBeatQueue, 'CRM_Service'); // ✅ nu perfect centraal geregeld
+    startHeartbeat(channel, heartBeatQueue, 'CRM_Service');
 
   } catch (err) {
     console.error('❌ Fout bij opstarten:', err.response?.data || err.message);

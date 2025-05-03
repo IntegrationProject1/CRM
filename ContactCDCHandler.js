@@ -9,7 +9,7 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
   const { ChangeEventHeader, ...objectData } = message.payload;
   const action = ChangeEventHeader.changeType;
 
-  console.log('📥 Salesforce CDC Contact Event ontvangen:', action);
+  console.log('📥 Salesforce CDC Contact Event ontvangen:', message);
 
   let recordId;
   if (['CREATE', 'UPDATE', 'DELETE'].includes(action)) {
@@ -49,7 +49,7 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
       };
 
       xmlMessage = jsonToXml(JSONMsg.UserMessage, { rootName: 'UserMessage' });
-      xsdPath = './xsd/user_accountXSD/UserMessage.xsd';
+      xsdPath = './xsd/userXSD/UserCreate.xsd';
 
       if (!validator.validateXml(xmlMessage, xsdPath)) {
         console.error('❌ XML Create niet geldig tegen XSD');
@@ -84,7 +84,7 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
       };
 
       xmlMessage = jsonToXml(JSONMsg.UserMessage, { rootName: 'UserMessage' }); // hier moet gechecked worden
-      xsdPath = './xsd/user_accountXSD/UserMessage.xsd';// hier moet gechecked worden
+      xsdPath = './xsd/userXSD/UserUpdate.xsd';// hier moet gechecked worden
 
       if (!validator.validateXml(xmlMessage, xsdPath)) {
         console.error('❌ XML Update niet geldig tegen XSD');
@@ -118,7 +118,7 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
       };
 
       xmlMessage = jsonToXml(JSONMsg.UserMessage, { rootName: 'UserMessage' }); // hier moet gechecked worden
-      xsdPath = './xsd/user_accountXSD/UserMessage.xsd';
+      xsdPath = './xsd/userXSD/UserDelete.xsd';
 
       if (!validator.validateXml(xmlMessage, xsdPath)) {
         console.error('❌ XML Delete niet geldig tegen XSD');
@@ -133,7 +133,7 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
 
   const actionLower = action.toLowerCase();
 
-  console.log('📤 Salesforce Converted Message:', JSON.stringify(JSONMsg, null, 2));
+  // console.log('📤 Salesforce Converted Message:', JSON.stringify(JSONMsg, null, 2));
 
   const exchangeName = 'user';
 
