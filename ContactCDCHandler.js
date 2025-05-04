@@ -2,14 +2,21 @@ require('dotenv').config();
 const { jsonToXml } = require("./xmlJsonTranslator");
 const validator = require("./xmlValidator");
 
-let ignoreUpdate = false;
-
 module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel) {
-
   const { ChangeEventHeader, ...objectData } = message.payload;
+
+  if (ChangeEventHeader.changeOrigin === "com/salesforce/api/rest/50.0") { // API call CDC event negeren
+      console.log("🚫 Salesforce API call gedetecteerd, actie overgeslagen.");
+      return;
+  }
+
   const action = ChangeEventHeader.changeType;
 
-  console.log('📥 Salesforce CDC Contact Event ontvangen:', message);
+  console.log('📥 Salesforce CDC Contact Event ontvangen:', action, ChangeEventHeader, objectData);
+
+  // if (['UPDATE'].includes(action)) {
+  //   console.log("chenged fields:", ChangeEventHeader.changedFields)
+  // }
 
   let recordId;
   if (['CREATE', 'UPDATE', 'DELETE'].includes(action)) {
@@ -25,7 +32,6 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
   switch (action) {
     case 'CREATE':
       UUIDTimeStamp = new Date().getTime();
-      ignoreUpdate = true;
 
       try {
         await sfClient.updateUser(recordId, { UUID__c: UUIDTimeStamp });
@@ -58,12 +64,6 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
       break;
 
     case 'UPDATE':
-      if (ignoreUpdate) {
-        ignoreUpdate = false;
-        console.log("🔕 [CDC] UPDATE event genegeerd na UUID update");
-        return;
-      }
-
       const resultUpd = await sfClient.sObject('Contact').retrieve(recordId);
       if (!resultUpd?.UUID__c) {
         console.error("❌ Geen UUID gevonden voor recordId:", recordId);
@@ -77,14 +77,16 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
           "ActionType": action,
           "UUID": new Date(UUIDTimeStamp).toISOString(),
           "TimeOfAction": new Date().toISOString(),
-          "EncryptedPassword": "", // VERPLICHT veld toevoegen!
+          "EncryptedPassword": "",
+          "FirstName": objectData.FirstName || "",
+          "LastName": objectData.LastName || "",
           "PhoneNumber": objectData.Phone || "",
           "EmailAddress": objectData.Email || ""
         }
       };
 
-      xmlMessage = jsonToXml(JSONMsg.UserMessage, { rootName: 'UserMessage' }); // hier moet gechecked worden
-      xsdPath = './xsd/userXSD/UserUpdate.xsd';// hier moet gechecked worden
+      xmlMessage = jsonToXml(JSONMsg.UserMessage, { rootName: 'UserMessage' });
+      xsdPath = './xsd/userXSD/UserUpdate.xsd';
 
       if (!validator.validateXml(xmlMessage, xsdPath)) {
         console.error('❌ XML Update niet geldig tegen XSD');
@@ -111,13 +113,11 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
         "UserMessage": {
           "ActionType": action,
           "UUID": new Date(UUIDTimeStamp).toISOString(),
-          "TimeOfAction": new Date().toISOString(),
-          "EncryptedPassword": ""
-          // Bij DELETE geen extra data nodig, maar EncryptedPassword MOET aanwezig zijn
+          "TimeOfAction": new Date().toISOString()
         }
       };
 
-      xmlMessage = jsonToXml(JSONMsg.UserMessage, { rootName: 'UserMessage' }); // hier moet gechecked worden
+      xmlMessage = jsonToXml(JSONMsg.UserMessage, { rootName: 'UserMessage' });
       xsdPath = './xsd/userXSD/UserDelete.xsd';
 
       if (!validator.validateXml(xmlMessage, xsdPath)) {
@@ -150,4 +150,3 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
     console.log(`📤 Bericht verstuurd naar exchange "${exchangeName}" met routing key "${routingKey}"`);
   }
 }
-
