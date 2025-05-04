@@ -1,0 +1,46 @@
+name: E2E Test Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      rabbitmq:
+        image: rabbitmq:3-management
+        ports:
+          - 5672:5672
+          - 15672:15672
+        options: >-
+          --health-cmd "rabbitmqctl status"
+          --health-interval 10s
+          --health-timeout 10s
+          --health-retries 5
+
+    env:
+      RABBITMQ_HOST: localhost
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: guest
+      RABBITMQ_PASSWORD: guest
+      SALESFORCE_USERNAME: ${{ secrets.SF_USERNAME }}
+      SALESFORCE_PASSWORD: ${{ secrets.SF_PASSWORD }}
+      SALESFORCE_TOKEN: ${{ secrets.SF_TOKEN }}
+      SALESFORCE_LOGIN_URL: ${{ secrets.SF_LOGIN }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - run: npm ci
+
+      - name: Run E2E Tests
+        run: npm test
