@@ -43,7 +43,7 @@ async function startCDCListener(salesforceClient, rabbitMQChannel) {
             "ActionType": action,
             "UUID": new Date(UUIDTimeStamp).toISOString(),
             "TimeOfAction": new Date().toISOString(),
-            "EncryptedPassword": "", // verplicht veld volgens ons XSD stuctuur
+            "EncryptedPassword": "",
             "FirstName": objectData.FirstName || "",
             "LastName": objectData.LastName || "",
             "PhoneNumber": objectData.Phone || "",
@@ -80,14 +80,14 @@ async function startCDCListener(salesforceClient, rabbitMQChannel) {
             "ActionType": action,
             "UUID": new Date(UUIDTimeStamp).toISOString(),
             "TimeOfAction": new Date().toISOString(),
-            "EncryptedPassword": "", // VERPLICHT veld toevoegen!
+            "EncryptedPassword": "",
             "PhoneNumber": objectData.Phone || "",
             "EmailAddress": objectData.Email || ""
           }
         };
 
-        xmlMessage = jsonToXml(JSONMsg.UserMessage, { rootName: 'UserMessage' }); // hier moet gechecked worden
-        xsdPath = './xsd/userXSD/UserCreate.xsd';// hier moet gechecked worden
+        xmlMessage = jsonToXml(JSONMsg.UserMessage, { rootName: 'UserMessage' });
+        xsdPath = './xsd/userXSD/UserCreate.xsd';
 
         if (!validator.validateXml(xmlMessage, xsdPath)) {
           console.error('❌ XML Update niet geldig tegen XSD');
@@ -97,10 +97,10 @@ async function startCDCListener(salesforceClient, rabbitMQChannel) {
 
       case 'DELETE':
         const query = salesforceClient.sObject('Contact')
-            .select('UUID__c, Id')
-            .where({ Id: recordId, IsDeleted: true })
-            .limit(1)
-            .scanAll(true);
+          .select('UUID__c, Id')
+          .where({ Id: recordId, IsDeleted: true })
+          .limit(1)
+          .scanAll(true);
 
         const resultDel = await query.run();
         UUIDTimeStamp = resultDel[0]?.UUID__c || null;
@@ -116,13 +116,11 @@ async function startCDCListener(salesforceClient, rabbitMQChannel) {
             "UUID": new Date(UUIDTimeStamp).toISOString(),
             "TimeOfAction": new Date().toISOString(),
             "EncryptedPassword": ""
-            // Bij DELETE geen extra data nodig, maar EncryptedPassword MOET aanwezig zijn
           }
         };
 
-        xmlMessage = jsonToXml(JSONMsg.UserMessage, { rootName: 'UserMessage' }); // hier moet gechecked worden
+        xmlMessage = jsonToXml(JSONMsg.UserMessage, { rootName: 'UserMessage' });
         xsdPath = './xsd/userXSD/UserCreate.xsd';
-
 
         if (!validator.validateXml(xmlMessage, xsdPath)) {
           console.error('❌ XML Delete niet geldig tegen XSD');
@@ -136,43 +134,23 @@ async function startCDCListener(salesforceClient, rabbitMQChannel) {
     }
 
     const actionLower = action.toLowerCase();
-
-    console.log('📤 Salesforce Converted Message:', JSON.stringify(JSONMsg, null, 2));
-
     const exchangeName = 'user';
 
     await rabbitMQChannel.assertExchange(exchangeName, 'topic', { durable: true });
 
-    const targetBindings = [
+    const targets = [
       `frontend.user.${actionLower}`,
       `facturatie.user.${actionLower}`,
       `kassa.user.${actionLower}`
     ];
 
-    for (const routingKey of targetBindings) {
+    for (const routingKey of targets) {
       rabbitMQChannel.publish(exchangeName, routingKey, Buffer.from(JSON.stringify(JSONMsg)));
-      console.log(`📤 Bericht verstuurd naar exchange "${exchangeName}" met routing key "${routingKey}"`);
+      console.log(`📤 Bericht verstuurd naar "${exchangeName}" met key "${routingKey}"`);
     }
   });
 
   console.log('✅ Verbonden met Salesforce Streaming API');
 }
 
-// Instantieer Salesforce Client + RabbitMQ Connection
-const sfClient = new SalesforceClient(
-    process.env.SALESFORCE_USERNAME,
-    process.env.SALESFORCE_PASSWORD,
-    process.env.SALESFORCE_TOKEN,
-    process.env.SALESFORCE_LOGIN_URL
-);
-
-(async () => {
-  const amqpConn = await amqp.connect(`amqp://${process.env.RABBITMQ_USERNAME}:${process.env.RABBITMQ_PASSWORD}@${process.env.RABBITMQ_HOST}:${process.env.RABBITMQ_PORT}`);
-  const channel = await amqpConn.createChannel();
-  console.log("✅ Verbonden met RabbitMQ Kanaal");
-
-  await sfClient.login();
-  await startCDCListener(sfClient, channel);
-})();
-
-
+module.exports = { startCDCListener }; // <-- HIER VERPLAATST NAAR BUITEN
