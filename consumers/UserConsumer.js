@@ -1,5 +1,5 @@
 const libxmljs = require('libxmljs2');
-const xmlJsonTranslator = require("../xmlJsonTranslator");
+const xmlJsonTranslator = require("../utils/xmlJsonTranslator");
 
 const createUserConsumer = require("./createUserConsumer");
 module.exports = async function StartUserConsumer(channel, salesforceClient) {

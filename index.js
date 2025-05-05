@@ -1,6 +1,6 @@
 require('dotenv').config();
 const amqp = require('amqplib');
-const ContactCDCHandler = require('./ContactCDCHandler');
+const ContactCDCHandler = require('./cdc/ContactCDCHandler');
 const SalesforceClient   = require('./salesforceClient');
 const StartUserConsumer = require('./consumers/UserConsumer');
 const startHeartbeat     = require('./publisher/heartbeat'); // ✅ netjes uitbesteed

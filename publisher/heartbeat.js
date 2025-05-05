@@ -1,5 +1,5 @@
 const path = require('path');
-const {validateXml} = require('../xmlValidator');
+const {validateXml} = require('../utils/xmlValidator');
 
 /**
  * Starts sending periodic heartbeat messages to a RabbitMQ exchange.
