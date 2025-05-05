@@ -9,17 +9,14 @@ jest.mock('../../xmlJsonTranslator', () => ({
   jsonToXml: () => '<xml>stub</xml>'
 }));
 
-// Fake CDC client
 class FakeCDCClient extends EventEmitter {
-  subscribe(channel, callback) {
+  subscribe(_channel, callback) {
     this.on('message', callback);
   }
 }
 
-// Simuleer opslag
 let simulatedUUID = null;
 
-// Mocked Salesforce Client
 const mockUpdateUser = jest.fn().mockImplementation((_id, body) => {
   simulatedUUID = body.UUID__c;
   return Promise.resolve();
@@ -39,7 +36,7 @@ describe('CDC Listener Integration Test', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    simulatedUUID = Date.now(); // elke test unieke UUID
+    simulatedUUID = Date.now(); // unieke UUID
     cdcClient = mockSalesforceClient.createCDCClient();
 
     fakeChannel = {
@@ -49,7 +46,7 @@ describe('CDC Listener Integration Test', () => {
   });
 
   it('✅ verwerkt een CREATE CDC-event en roept RabbitMQ publish correct aan', async () => {
-    await startCDCListener(mockSalesforceClient, fakeChannel);
+    await startCDCListener(mockSalesforceClient, fakeChannel, cdcClient); // geef cdcClient expliciet mee
 
     const fakeEvent = {
       payload: {
@@ -64,25 +61,14 @@ describe('CDC Listener Integration Test', () => {
       }
     };
 
+    // ⏱️ Simuleer na de listener gestart is
     cdcClient.emit('message', fakeEvent);
 
-    await new Promise(resolve => setTimeout(resolve, 300)); // lang genoeg voor async flow
+    await new Promise(resolve => setTimeout(resolve, 500)); // verhoog timeout
 
     expect(fakeChannel.publish).toHaveBeenCalledTimes(3);
-    expect(fakeChannel.publish).toHaveBeenCalledWith(
-      'user',
-      'frontend.user.create',
-      expect.any(Buffer)
-    );
-    expect(fakeChannel.publish).toHaveBeenCalledWith(
-      'user',
-      'facturatie.user.create',
-      expect.any(Buffer)
-    );
-    expect(fakeChannel.publish).toHaveBeenCalledWith(
-      'user',
-      'kassa.user.create',
-      expect.any(Buffer)
-    );
+    expect(fakeChannel.publish).toHaveBeenCalledWith('user', 'frontend.user.create', expect.any(Buffer));
+    expect(fakeChannel.publish).toHaveBeenCalledWith('user', 'facturatie.user.create', expect.any(Buffer));
+    expect(fakeChannel.publish).toHaveBeenCalledWith('user', 'kassa.user.create', expect.any(Buffer));
   });
 });

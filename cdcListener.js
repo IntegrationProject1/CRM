@@ -4,8 +4,8 @@ const SalesforceClient = require("./salesforceClient");
 const { jsonToXml } = require("./xmlJsonTranslator");
 const validator = require("./xmlValidator");
 
-async function startCDCListener(salesforceClient, rabbitMQChannel) {
-  const cdcClient = salesforceClient.createCDCClient();
+async function startCDCListener(salesforceClient, rabbitMQChannel, externalCDCClient = null) {
+  const cdcClient = externalCDCClient || salesforceClient.createCDCClient();
   let ignoreUpdate = false;
 
   cdcClient.subscribe('/data/ContactChangeEvent', async function (message) {
@@ -153,4 +153,4 @@ async function startCDCListener(salesforceClient, rabbitMQChannel) {
   console.log('✅ Verbonden met Salesforce Streaming API');
 }
 
-module.exports = { startCDCListener }; // <-- HIER VERPLAATST NAAR BUITEN
+module.exports = { startCDCListener };

@@ -1,14 +1,37 @@
+require('dotenv').config(); // 📦 Laad .env voor lokale omgeving
+
 const amqp = require('amqplib');
 const SalesforceClient = require('../../salesforceClient');
 const { startCDCListener } = require('../../cdcListener');
 
-jest.setTimeout(20000); // Extra tijd
+// ✅ CI fallback (indien niet gedefinieerd)
+process.env.RABBITMQ_HOST = process.env.RABBITMQ_HOST || 'rabbitmq';
+process.env.RABBITMQ_USERNAME = process.env.RABBITMQ_USERNAME || 'guest';
+process.env.RABBITMQ_PASSWORD = process.env.RABBITMQ_PASSWORD || 'guest';
+process.env.RABBITMQ_PORT = process.env.RABBITMQ_PORT || '5672';
+
+// ✅ Langere timeout voor trage CI-start
+jest.setTimeout(60000);
+
+// ✅ Retry-functie voor RabbitMQ-connectie
+async function waitForRabbitMQ(amqpUrl, retries = 10, delay = 5000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await amqp.connect(amqpUrl);
+    } catch (err) {
+      console.warn(`⏳ Wachten op RabbitMQ (${i + 1}/${retries})...`);
+      await new Promise(res => setTimeout(res, delay));
+    }
+  }
+  throw new Error("❌ RabbitMQ niet bereikbaar na meerdere pogingen");
+}
 
 describe('E2E CDC Listener test', () => {
   let connection, channel;
 
   beforeAll(async () => {
-    connection = await amqp.connect(`amqp://${process.env.RABBITMQ_USERNAME}:${process.env.RABBITMQ_PASSWORD}@${process.env.RABBITMQ_HOST}:${process.env.RABBITMQ_PORT}`);
+    const amqpUrl = `amqp://${process.env.RABBITMQ_USERNAME}:${process.env.RABBITMQ_PASSWORD}@${process.env.RABBITMQ_HOST}:${process.env.RABBITMQ_PORT}`;
+    connection = await waitForRabbitMQ(amqpUrl);
     channel = await connection.createChannel();
 
     await channel.assertExchange('user', 'topic', { durable: true });
@@ -43,7 +66,7 @@ describe('E2E CDC Listener test', () => {
         }
       }, { noAck: false });
 
-      setTimeout(() => reject('⏰ Timeout: geen bericht ontvangen'), 8000);
+      setTimeout(() => reject('⏰ Timeout: geen bericht ontvangen'), 15000);
     });
 
     expect(message).toHaveProperty('UserMessage');
@@ -51,7 +74,7 @@ describe('E2E CDC Listener test', () => {
   });
 
   afterAll(async () => {
-    await channel.close();
-    await connection.close();
+    if (channel) await channel.close();
+    if (connection) await connection.close();
   });
 });
