@@ -1,4 +1,4 @@
-module.exports = async function updateEventConsumer(channel, exchange) {
+module.exports = async function updateEventConsumer(channel,salesforceClient, exchange) {
     const queue = 'event_update_queue';
 
     // Zorg ervoor dat de wachtrij bestaat

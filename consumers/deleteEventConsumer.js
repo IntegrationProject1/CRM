@@ -1,4 +1,4 @@
-module.exports = async function deleteEventConsumer(channel, exchange) {
+module.exports = async function deleteEventConsumer(channel,salesforceClient, exchange) {
     const queue = 'event_delete_queue';
 
     // Zorg ervoor dat de wachtrij bestaat
