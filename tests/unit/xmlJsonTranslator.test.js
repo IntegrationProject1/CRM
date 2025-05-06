@@ -6,7 +6,7 @@ const {
 } = require('../../xmlJsonTranslator');
 
 describe('xmlJsonTranslator', () => {
-    it('should translate XML to JSON correctly', async () => {
+    it('moet XML correct naar JSON vertalen', async () => {
         const xml = `
       <UserMessage>
         <FirstName>John</FirstName>
@@ -19,7 +19,7 @@ describe('xmlJsonTranslator', () => {
         expect(json.UserMessage.LastName).toBe("Doe");
     });
 
-    it('should translate JSON to XML correctly', () => {
+    it('moet JSON correct naar XML vertalen', () => {
         const json = {
             UserMessage: {
                 FirstName: "Will",
@@ -36,7 +36,7 @@ describe('xmlJsonTranslator', () => {
         //                    </UserMessage>`.trim());
     });
 
-    it('should transform Salesforce CDC event to XML for "User"', () => {
+    it('moet Salesforce CDC-gebeurtenis transformeren naar XML voor "User"', () => {
         const sample = {
             changeType: 'CREATE',
             payload: {
@@ -52,7 +52,7 @@ describe('xmlJsonTranslator', () => {
         expect(xml).toContain('<type>create</type>');
     });
 
-    it('should transform XML back to Salesforce JSON for "User"', async () => {
+    it('XML moet terug worden getransformeerd zijn naar Salesforce JSON voor "User"', async () => {
         const xml = `
       <updateUser>
         <id>001</id>

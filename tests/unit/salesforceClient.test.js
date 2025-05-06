@@ -1,23 +1,16 @@
+require('dotenv').config(); // Load ".env" variables
 const SalesforceClient = require('../../salesforceClient');
-
-// const sfClient = new SalesforceClient(
-//     process.env.SALESFORCE_USERNAME,
-//     process.env.SALESFORCE_PASSWORD,
-//     process.env.SALESFORCE_TOKEN,
-//     process.env.SALESFORCE_LOGIN_URL
-// );
-
-// Dummy test credentials:
-const TEST_USERNAME = process.env.SALESFORCE_USERNAME;
-const TEST_PASSWORD = process.env.SALESFORCE_PASSWORD;
-const TEST_TOKEN = process.env.SALESFORCE_TOKEN;
-const LOGIN_URL = process.env.SALESFORCE_LOGIN_URL;
 
 describe('SalesforceClient (Echte integratietests)', () => {
     let client;
 
     beforeAll(async () => {
-        client = new SalesforceClient(TEST_USERNAME, TEST_PASSWORD, TEST_TOKEN, LOGIN_URL);
+        client = new SalesforceClient(
+            process.env.SALESFORCE_USERNAME,
+            process.env.SALESFORCE_PASSWORD,
+            process.env.SALESFORCE_TOKEN,
+            process.env.SALESFORCE_LOGIN_URL
+        );
         await client.login();
     });
 
