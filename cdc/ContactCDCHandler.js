@@ -11,7 +11,7 @@ const validator = require("../utils/xmlValidator");
  * @returns {Promise<void>}
  */
 module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel) {
-   const {ChangeEventHeader, ...objectData} = message.payload;
+   const {ChangeEventHeader, ...cdcObjectData} = message.payload;
 
    if (ChangeEventHeader.changeOrigin === "com/salesforce/api/rest/50.0") { // API call CDC event negeren
       console.log("🚫 Salesforce API call gedetecteerd, actie overgeslagen.");
@@ -20,7 +20,7 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
 
    const action = ChangeEventHeader.changeType;
 
-   console.log('📥 Salesforce CDC Contact Event ontvangen:', action, ChangeEventHeader, objectData);
+   console.log('📥 Salesforce CDC Contact Event ontvangen:', action, cdcObjectData);
 
    // if (['UPDATE'].includes(action)) {
    //   console.log("chenged fields:", ChangeEventHeader.changedFields)
@@ -54,10 +54,10 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
                "UUID": new Date(UUIDTimeStamp).toISOString(),
                "TimeOfAction": new Date().toISOString(),
                "EncryptedPassword": "", // verplicht veld volgens ons XSD stuctuur
-               "FirstName": objectData.FirstName || "",
-               "LastName": objectData.LastName || "",
-               "PhoneNumber": objectData.Phone || "",
-               "EmailAddress": objectData.Email || ""
+               "FirstName": cdcObjectData.FirstName || "",
+               "LastName": cdcObjectData.LastName || "",
+               "PhoneNumber": cdcObjectData.Phone || "",
+               "EmailAddress": cdcObjectData.Email || ""
             }
          };
 
@@ -71,24 +71,24 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
          break;
 
       case 'UPDATE':
-         const resultUpd = await sfClient.sObject('Contact').retrieve(recordId);
-         if (!resultUpd?.UUID__c) {
+         const updatedRecord = await sfClient.sObject('Contact').retrieve(recordId);
+         if (!updatedRecord?.UUID__c) {
             console.error("❌ Geen UUID gevonden voor recordId:", recordId);
             return;
          }
 
-         UUIDTimeStamp = resultUpd.UUID__c;
+         UUIDTimeStamp = updatedRecord.UUID__c;
 
          JSONMsg = {
             "UserMessage": {
                "ActionType": action,
                "UUID": new Date(UUIDTimeStamp).toISOString(),
                "TimeOfAction": new Date().toISOString(),
-               "EncryptedPassword": "",
-               "FirstName": objectData.FirstName || "",
-               "LastName": objectData.LastName || "",
-               "PhoneNumber": objectData.Phone || "",
-               "EmailAddress": objectData.Email || ""
+               "EncryptedPassword": updatedRecord.Password__c || "",
+               "FirstName": updatedRecord.FirstName || "",
+               "LastName": updatedRecord.LastName || "",
+               "PhoneNumber": updatedRecord.Phone || "",
+               "EmailAddress": updatedRecord.Email || ""
             }
          };
 
