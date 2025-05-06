@@ -54,8 +54,8 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
                "UUID": new Date(UUIDTimeStamp).toISOString(),
                "TimeOfAction": new Date().toISOString(),
                "EncryptedPassword": "", // verplicht veld volgens ons XSD stuctuur
-               "FirstName": cdcObjectData.FirstName || "",
-               "LastName": cdcObjectData.LastName || "",
+               "FirstName": cdcObjectData.Name.FirstName || "",
+               "LastName": cdcObjectData.Name.LastName || "",
                "PhoneNumber": cdcObjectData.Phone || "",
                "EmailAddress": cdcObjectData.Email || ""
             }
