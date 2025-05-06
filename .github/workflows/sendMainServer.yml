@@ -21,9 +21,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run tests (optioneel, mag ook tijdelijk 'npm run lint' zijn)
+      - name: Run tests
         run: echo "⚠️ Nog geen test setup, overslaan"
-        #run: npm test
+        # run: npm test
+
   build-and-deploy:
     needs: test
     runs-on: ubuntu-latest
@@ -40,16 +41,19 @@ jobs:
       - name: Save Docker image as tarball
         run: docker save crm-service:latest -o crm-service.tar
 
-      - name: Copy Docker image to server and deploy
-        uses: appleboy/ssh-action@v0.1.6
+      - name: Set up SSH agent
+        uses: webfactory/ssh-agent@v0.7.0
         with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: ${{ secrets.SSH_PORT }}
-          script: |
-            cd ~/crmV2
-            git pull origin main
-            docker compose down
-            docker compose up -d --build
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
+      - name: Upload Docker image to server
+        run: |
+          scp -P ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no crm-service.tar ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/tmp/crm-service.tar
+
+      - name: Deploy Docker image on server
+        run: |
+          ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+          docker load -i /tmp/crm-service.tar
+          cd ~/crmV2
+          docker compose --env-file .env.production up -d --build
+          EOF

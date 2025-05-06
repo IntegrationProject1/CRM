@@ -1,6 +1,6 @@
 require('dotenv').config();
-const {jsonToXml} = require("./xmlJsonTranslator");
-const validator = require("./xmlValidator");
+const {jsonToXml} = require("../utils/xmlJsonTranslator");
+const validator = require("../utils/xmlValidator");
 
 /**
  * @module ContactCDCHandler

@@ -4,7 +4,7 @@
  */
 
 const libxmljs = require('libxmljs2');
-const xmlJsonTranslator = require("../xmlJsonTranslator");
+const xmlJsonTranslator = require("../utils/xmlJsonTranslator");
 
 /**
  * Start de UserConsumer om berichten van RabbitMQ-queues te verwerken.
