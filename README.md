@@ -1,10 +1,4 @@
 
-<<<<<<< HEAD
-> [!CAUTION]
-> 
-> Due to technical problems we leave Java and migrate to JavaScript. 
-> (PS This is the last commit in the Java directory system)
-=======
 # CRM Microservice - Salesforce Integratie
 
 Deze microservice verzorgt de communicatie tussen het centrale platform en Salesforce via RabbitMQ en de Salesforce REST API (JSforce).
