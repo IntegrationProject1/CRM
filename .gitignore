@@ -4,3 +4,4 @@ node_modules
 .env.production
 .idea/
 logs/
+package-lock.json

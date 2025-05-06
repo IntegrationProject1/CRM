@@ -47,6 +47,17 @@ async function sendLog(channel, exchangeName, serviceName = 'CRM_Service', statu
     channel.publish(exchangeName, '', Buffer.from(xml));
     logger_logger.info('Sending message', channel, exchangeName, serviceName, status_level);
 }
+
+/**
+ * Sends a message to a RabbitMQ exchange.
+ * @param {string} exchangeName - Name of the exchange to publish to.
+ * @param {string} status_level - Status level (e.g., 'info', 'error').
+ * @param {string} code - Code for the message.
+ * @param {string} message - Message content.
+ * @returns {Promise<void>} Resolves when the message is sent.
+ * @example
+ * sendMessage('logExchange', 'info', '200', 'Heartbeat message');
+ */
 async function sendMessage(exchangeName, status_level, code, message) {
     try {
         const conn    = await amqp.connect({
