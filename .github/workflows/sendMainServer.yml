@@ -56,4 +56,3 @@ jobs:
           docker load -i /tmp/crm-service.tar
           cd ~/crmV2
           docker compose --env-file .env.production up -d --build
-          EOF
