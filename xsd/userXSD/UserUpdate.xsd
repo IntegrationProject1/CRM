@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+    <xs:element name="UserMessage">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="ActionType" type="xs:string"/>
+                <xs:element name="UUID" type="xs:dateTime"/>
+                <xs:element name="TimeOfAction" type="xs:dateTime"/>
+                <xs:element name="EncryptedPassword" type="xs:string" minOccurs="0"/>
+                <xs:element name="FirstName" type="xs:string" minOccurs="0"/>
+                <xs:element name="LastName" type="xs:string" minOccurs="0"/>
+                <xs:element name="PhoneNumber" type="xs:string" minOccurs="0"/>
+                <xs:element name="EmailAddress" type="xs:string" minOccurs="0"/>
+                <xs:element name="Business" minOccurs="0">
+                    <xs:complexType>
+                        <xs:sequence>
+                            <xs:element name="BusinessName" type="xs:string" minOccurs="0"/>
+                            <xs:element name="BusinessEmail" type="xs:string" minOccurs="0"/>
+                            <xs:element name="RealAddress" type="xs:string" minOccurs="0"/>
+                            <xs:element name="BTWNumber" type="xs:string" minOccurs="0"/>
+                            <xs:element name="FacturationAddress" type="xs:string" minOccurs="0"/>
+                        </xs:sequence>
+                    </xs:complexType>
+                </xs:element>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+</xs:schema>
