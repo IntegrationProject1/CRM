@@ -48,10 +48,12 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
          let SalesforceObjId;
          if (['update', 'delete'].includes(action)) {
             // retrieve Salesforce ID from UUID
-            const query = salesforceClient.sObject("Contact")
-               .select("Id")
-               .find({ UUID__c: UUIDTimeStamp })
-               .limit(1);
+            const results = await salesforceClient
+            .sObject('Contact')
+            .select('Id, UUID__c')
+            .where({ UUID__c: UUIDTimeStamp })
+            .execute();
+          
 
             let result;
             try {
