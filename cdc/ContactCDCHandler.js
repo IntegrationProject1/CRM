@@ -153,7 +153,7 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
    ];
 
    for (const routingKey of targetBindings) {
-      RMQChannel.publish(exchangeName, routingKey, Buffer.from(JSON.stringify(JSONMsg)));
+      RMQChannel.publish(exchangeName, routingKey, Buffer.from(xmlMessage));
       console.log(`📤 Bericht verstuurd naar exchange "${exchangeName}" met routing key "${routingKey}"`);
    }
 }
