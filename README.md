@@ -1,62 +1,73 @@
-# CRM
 
-this is a example of readme
+<<<<<<< HEAD
+> [!CAUTION]
+> 
+> Due to technical problems we leave Java and migrate to JavaScript. 
+> (PS This is the last commit in the Java directory system)
+=======
+# CRM Microservice - Salesforce Integratie
 
-Simple overview of use/purpose.
+Deze microservice verzorgt de communicatie tussen het centrale platform en Salesforce via RabbitMQ en de Salesforce REST API (JSforce).
 
-Description
+## Functionaliteit
 
-An in-depth paragraph about your project and overview of use.
-Getting Started
+- Create, Update en Delete van gebruikers (Contact-object in Salesforce)
+- Input via XML-berichten over RabbitMQ
+- Logging van iedere actie naar een aparte `crm_log` queue
+- Mapping naar Salesforce via `jsforce`
+- Afhandeling van fouten (bijv. duplicate gebruikers, niet gevonden UUID’s)
 
-Dependencies
+## Mappenstructuur
 
-    Describe any prerequisites, libraries, OS version, etc., needed before installing program.
-    ex. Windows 10
+- `/src/config` - RabbitMQ en Salesforce configuratie
+- `/src/consumers` - Message receivers per actie (create, update, delete)
+- `/src/services` - Businesslogica (contactService)
+- `/scripts` - Testberichten versturen
+- `.env` - Gevoelige configuratie (Salesforce credentials, RabbitMQ login)
 
-Installing
+## .env structuur
 
-    How/where to download your program
-    Any modifications needed to be made to files/folders
+```env
+# Salesforce
+SALESFORCE_CLIENT_ID=...
+SALESFORCE_CLIENT_SECRET=...
+SALESFORCE_USERNAME=...
+SALESFORCE_PASSWORD=...
+SALESFORCE_TOKEN=...
+SALESFORCE_LOGIN_URL=https://login.salesforce.com
+SALESFORCE_URL=https://ehb6-dev-ed.develop.my.salesforce.com
 
-Executing program
+# RabbitMQ
+RABBITMQ_HOST=...
+RABBITMQ_PORT=...
+RABBITMQ_USERNAME=...
+RABBITMQ_PASSWORD=...
+RABBITMQ_EXCHANGE=heartbeat
+```
 
-    How to run the program
-    Step-by-step bullets
+## Project draaien
 
-code blocks for commands
+```bash
+npm install
+node src/index.js
+```
 
-Help
+## Testen
 
-Any advise for common problems or issues.
+Gebruik een van de volgende scripts:
 
-command to run if program contains helper info
+```bash
+node scripts/sendCreateMessage.js
+node scripts/sendUpdateMessage.js
+node scripts/sendDeleteMessage.js
+```
 
-Authors
+## Logging
 
-Contributors names and contact info
+Elke actie (CREATE, UPDATE, DELETE) stuurt een logbericht naar `crm_log` met status `SUCCESS`, `ERROR` of `NOT_FOUND`.
 
-ex. Dominique Pizzie
-ex. @DomPizzie
-Version History
+## Change Data Capture (CDC)
 
-    0.2
-        Various bug fixes and optimizations
-        See commit change or See release history
-    0.1
-        Initial Release
+De structuur is voorbereid om CDC toe te voegen. Er wordt geluisterd naar `/data/ContactChangeEvent`, vanwaaruit toekomstige berichten kunnen worden gegenereerd richting andere queues.
 
-License
-
-This project is licensed under the [NAME HERE] License - see the LICENSE.md file for details
-Acknowledgments
-
-Inspiration, code snippets, etc.
-
-    awesome-readme
-    PurpleBooth
-    dbader
-    zenorocha
-    fvcproductions
-
-
+>>>>>>> java_to_jsforce
