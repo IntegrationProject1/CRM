@@ -5,7 +5,6 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-  # Ook manueel uitvoerbaar maken
   workflow_dispatch:
 
 jobs:
@@ -25,7 +24,7 @@ jobs:
           --health-retries 5
 
     env:
-      RABBITMQ_HOST: rabbitmq  # 👈 Belangrijk in CI
+      RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: guest
       RABBITMQ_PASSWORD: guest
@@ -35,34 +34,30 @@ jobs:
       SALESFORCE_LOGIN_URL: ${{ secrets.SF_LOGIN }}
 
     steps:
-      - name: Checkout repository
+      - name: 🧾 Checkout repo
         uses: actions/checkout@v3
 
-      - name: Set up Node.js
+      - name: 🧱 Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 18
 
-      - name: Install dependencies
+      - name: 📦 Install dependencies
         run: npm ci
 
-      - name: ✅ Wacht op RabbitMQ poort (via netcat)
+      - name: 🐇 Wacht op RabbitMQ
         run: |
           for i in {1..15}; do
-            nc -z rabbitmq 5672 && echo "✅ RabbitMQ is bereikbaar" && exit 0
+            nc -z rabbitmq 5672 && echo "✅ RabbitMQ is klaar" && exit 0
             echo "⏳ Wachten op RabbitMQ ($i/15)..."
-            sleep 4
+            sleep 3
           done
-          echo "❌ RabbitMQ startte niet op tijd op" && exit 1
+          echo "❌ RabbitMQ kwam niet op tijd op" && exit 1
 
-      - name: ✅ Controleer aanwezigheid van Salesforce secrets (niet tonen!)
+      - name: 🔐 Controleer Salesforce secrets
         run: |
-          if [ -z "$SALESFORCE_USERNAME" ]; then
-            echo "❌ SALESFORCE_USERNAME ontbreekt!"
-            exit 1
-          else
-            echo "✅ Salesforce secrets aanwezig (waarde niet getoond)"
-          fi
+          [ -z "$SALESFORCE_USERNAME" ] && echo "❌ SALESFORCE_USERNAME ontbreekt" && exit 1
+          echo "✅ Secrets aanwezig"
 
       - name: 🧪 Run E2E tests
-        run: npm test
+        run: npm test -- tests/e2e/cdcListener.e2e.test.js

@@ -5,16 +5,19 @@ const SalesforceClient = require('../../salesforceClient');
 const { startCDCListener } = require('../../cdcListener');
 
 // ✅ CI fallback (indien niet gedefinieerd)
-process.env.RABBITMQ_HOST = process.env.RABBITMQ_HOST || 'rabbitmq';
+const isCI = process.env.CI === 'true';
+
+process.env.RABBITMQ_HOST = process.env.RABBITMQ_HOST || (isCI ? 'rabbitmq' : 'localhost');
+
 process.env.RABBITMQ_USERNAME = process.env.RABBITMQ_USERNAME || 'guest';
 process.env.RABBITMQ_PASSWORD = process.env.RABBITMQ_PASSWORD || 'guest';
 process.env.RABBITMQ_PORT = process.env.RABBITMQ_PORT || '5672';
 
 // ✅ Langere timeout voor trage CI-start
-jest.setTimeout(60000);
+jest.setTimeout(25000);
 
 // ✅ Retry-functie voor RabbitMQ-connectie
-async function waitForRabbitMQ(amqpUrl, retries = 10, delay = 5000) {
+async function waitForRabbitMQ(amqpUrl, retries = 5, delay = 2000) {
   for (let i = 0; i < retries; i++) {
     try {
       return await amqp.connect(amqpUrl);
@@ -23,8 +26,9 @@ async function waitForRabbitMQ(amqpUrl, retries = 10, delay = 5000) {
       await new Promise(res => setTimeout(res, delay));
     }
   }
-  throw new Error("❌ RabbitMQ niet bereikbaar na meerdere pogingen");
+  throw new Error('❌ RabbitMQ niet bereikbaar na meerdere pogingen');
 }
+
 
 describe('E2E CDC Listener test', () => {
   let connection, channel;
