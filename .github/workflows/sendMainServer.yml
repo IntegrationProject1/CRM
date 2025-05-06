@@ -1,58 +1,82 @@
-name: CI/CD Pipeline
+name: Deploy to Staging
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  deploy:
+    name: Deploy to Staging
+    runs-on: [self-hosted]
+    environment: staging
+    env:
+      APP_REPOSITORY_DIR: ~/crmV3
+
     steps:
-      - uses: actions/checkout@v3
+      # - name: Configure SSH
+      #   run: |
+      #     eval $(ssh-agent)
+      #     echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/private_key
+      #     chmod 600 ~/private_key
+      #     ssh-add ~/private_key
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run tests
-        run: echo "⚠️ Nog geen test setup, overslaan"
-        # run: npm test
-
-  build-and-deploy:
-    needs: test
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      - name: Build Docker image
-        run: docker build -t crm-service:latest .
-
-      - name: Save Docker image as tarball
-        run: docker save crm-service:latest -o crm-service.tar
-
-      - name: Set up SSH agent
-        uses: webfactory/ssh-agent@v0.7.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-      - name: Upload Docker image to server
+      - name: Check if latest image exists
+        id: check_latest_image
         run: |
-          scp -P ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no crm-service.tar ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/tmp/crm-service.tar
+          ssh -v -o StrictHostKeyChecking=no -i ~/private_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} <<'ENDSSH'
+          if docker image inspect facturatie-facturatie:latest &> /dev/null; then
+            echo "image_exists=true" >> $GITHUB_ENV
+          else
+            echo "image_exists=false" >> $GITHUB_ENV
+          fi
+          ENDSSH
 
-      - name: Deploy Docker image on server
+      - name: Backup previous state
+        if: env.image_exists == 'true'
         run: |
-          ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
-          docker load -i /tmp/crm-service.tar
-          cd ~/crmV2
-          docker compose --env-file .env.production up -d --build
+          ssh -v -o StrictHostKeyChecking=no -i ~/private_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} <<'ENDSSH'
+          cd ${{ env.APP_REPOSITORY_DIR }}
+          docker tag facturatie-facturatie:latest facturatie-facturatie:backup
+          ENDSSH
+
+      - name: Deploy new version
+        run: |
+          ssh -v -o StrictHostKeyChecking=no -i ~/private_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} <<'ENDSSH'
+          cd ${{ env.APP_REPOSITORY_DIR }}
+          docker compose down
+          git checkout main
+          git pull
+          cat <<EOF > .env
+          RABBITMQ_URL=${{ secrets.RABBITMQ_URL }}
+          RABBITMQ_USER=${{ secrets.RABBITMQ_USER }}
+          RABBITMQ_PASS=${{ secrets.RABBITMQ_PASS }}
+          API_KEY=${{ secrets.API_KEY }}
+          API_URL=${{ secrets.API_URL }}
+          HASH_KEY=${{ secrets.HASH_KEY }}
+          EOF
+          docker compose up --build -d
+          ENDSSH
+
+      - name: Check deployment status
+        id: check_status
+        run: |
+          ssh -v -o StrictHostKeyChecking=no -i ~/private_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} <<'ENDSSH'
+          cd ${{ env.APP_REPOSITORY_DIR }}
+          if docker compose ps | grep facturatie-facturatie; then
+            echo "deployment_success=true" >> $GITHUB_ENV
+          else
+            echo "deployment_success=false" >> $GITHUB_ENV
+          fi
+          ENDSSH
+
+      - name: Rollback on failure
+        if: env.deployment_success != 'true'
+        run: |
+          ssh -v -o StrictHostKeyChecking=no -i ~/private_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} <<'ENDSSH'
+          cd ${{ env.APP_REPOSITORY_DIR }}
+          docker compose down
+          docker run -d --name restored_container facturatie-facturatie:backup
+          docker compose up -d
+          ENDSSH
