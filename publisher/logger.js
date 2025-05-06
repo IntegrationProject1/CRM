@@ -47,7 +47,7 @@ async function sendLog(channel, exchangeName, serviceName = 'CRM_Service', statu
     channel.publish(exchangeName, '', Buffer.from(xml));
     logger_logger.info('Sending message', channel, exchangeName, serviceName, status_level);
 }
-async function sendMessage(channel, exchangeName, status_level, code, message) {
+async function sendMessage(exchangeName, status_level, code, message) {
     try {
         const conn    = await amqp.connect({
             protocol: 'amqp',
