@@ -1,27 +1,52 @@
 require('dotenv').config();
 const { jsonToXml } = require("../utils/xmlJsonTranslator");
 const validator = require("../utils/xmlValidator");
+const hrtimeBase = process.hrtime.bigint();
 
 /**
- * Converteert een microsecond timestamp naar ISO string met 6 decimalen
- * @param {number} timestamp - Timestamp in microseconden (16 cijfers)
- * @returns {string} Geformatteerde ISO string
+ * @fileoverview Functies voor het genereren en formatteren van microseconden-precieze timestamps
+ * @module TimestampUtils
  */
-function formatMicroTimestamp(timestamp) {
-   const milliseconds = Math.floor(timestamp / 1000);
-   const microseconds = timestamp % 1000;
-   const iso = new Date(milliseconds).toISOString();
-   return iso.replace(/\.\d{3}Z$/, `.${String(microseconds).padStart(3, '0')}000Z`);
+
+/**
+ * Genereert een hoog-precisie timestamp met microseconden resolutie
+ * @returns {number} Microseconden timestamp (16 cijfers: millis + micros)
+ * @example
+ * const ts = generateMicroTimestamp(); // 1746638069480652
+ * @description
+ * Combineert Date.now() milliseconden met process.hrtime() nanoseconden
+ * om een unieke 16-cijferige timestamp te maken:
+ * - Eerste 13 cijfers: UNIX milliseconden
+ * - Laatste 3 cijfers: microseconden (0-999)
+ * @see {@link https://nodejs.org/api/process.html#processhrtimebigint process.hrtime() documentatie}
+ */
+
+function generateMicroTimestamp() {
+   const now = Date.now();
+   const diffNs = process.hrtime.bigint() - hrtimeBase;
+   const micros = Number((diffNs / 1000n) % 1000000n);
+   return now * 1000 + micros;
 }
 
 /**
- * Genereert een huidige timestamp met microseconden precisie
- * @returns {number} Timestamp in microseconden (16 cijfers)
+ * Formatteert een microseconden-timestamp naar ISO 8601 met 6 decimalen
+ * @param {number} timestamp - Microseconden timestamp (van generateMicroTimestamp)
+ * @returns {string} ISO 8601 datumtijd string met microseconden
+ * @example
+ * formatMicroTimestamp(1746638069480652);
+ * // "2025-05-07T17:14:29.480652Z"
+ * @throws {TypeError} Als de input niet numeriek is
+ * @description
+ * Converteert de timestamp in twee stappen:
+ * 1. Splitst in millis (eerste 13 cijfers) en micros (laatste 3 cijfers)
+ * 2. Combineert met Date's ISO string voor correcte tijdzone afhandeling
  */
-function generateMicroTimestamp() {
-   const now = Date.now();
-   const randomMicro = Math.floor(Math.random() * 1000);
-   return now * 1000 + randomMicro;
+function formatMicroTimestamp(timestamp) {
+   const millis = Math.floor(timestamp / 1000);
+   const micros = timestamp % 1000;
+   const date = new Date(millis);
+   return date.toISOString()
+       .replace(/\.\d{3}Z$/, `.${date.getUTCMilliseconds().toString().padStart(3, '0')}${micros.toString().padStart(3, '0')}Z`);
 }
 
 /**
@@ -42,7 +67,7 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
    }
 
    const action = ChangeEventHeader.changeType;
-   console.log('📥 Salesforce CDC Contact Event ontvangen:', action, cdcObjectData);
+   console.log('📥 Salesforce CDC Contact Event ontvangen:', action);
 
    let recordId;
    if (['CREATE', 'UPDATE', 'DELETE'].includes(action)) {
@@ -55,111 +80,104 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
    let xmlMessage;
    let xsdPath;
 
-   switch (action) {
-      case 'CREATE':
-         UUIDTimeStamp = generateMicroTimestamp();
+   try {
+      switch (action) {
+         case 'CREATE':
+            UUIDTimeStamp = generateMicroTimestamp();
+            await sfClient.updateUser(recordId, { UUID__c: UUIDTimeStamp.toString() });
+            console.log("✅ UUID succesvol bijgewerkt:", UUIDTimeStamp);
 
-         try {
-            await sfClient.updateUser(recordId, { UUID__c: UUIDTimeStamp });
-            console.log("✅ UUID succesvol bijgewerkt");
-         } catch (err) {
-            console.error("❌ Fout bij instellen UUID:", err.message);
-            return;
-         }
+            JSONMsg = {
+               UserMessage: {
+                  ActionType: action,
+                  UUID: formatMicroTimestamp(UUIDTimeStamp),
+                  TimeOfAction: formatMicroTimestamp(generateMicroTimestamp()),
+                  EncryptedPassword: "",
+                  FirstName: cdcObjectData.Name?.FirstName || "",
+                  LastName: cdcObjectData.Name?.LastName || "",
+                  PhoneNumber: cdcObjectData.Phone || "",
+                  EmailAddress: cdcObjectData.Email || ""
+               }
+            };
+            xsdPath = './xsd/userXSD/UserCreate.xsd';
+            break;
 
-         JSONMsg = {
-            "UserMessage": {
-               "ActionType": action,
-               "UUID": formatMicroTimestamp(UUIDTimeStamp),
-               "TimeOfAction": formatMicroTimestamp(generateMicroTimestamp()),
-               "EncryptedPassword": "",
-               "FirstName": cdcObjectData.Name.FirstName || "",
-               "LastName": cdcObjectData.Name.LastName || "",
-               "PhoneNumber": cdcObjectData.Phone || "",
-               "EmailAddress": cdcObjectData.Email || ""
+         case 'UPDATE':
+            const updatedRecord = await sfClient.sObject('Contact').retrieve(recordId);
+            if (!updatedRecord?.UUID__c) {
+               throw new Error(`Geen UUID gevonden voor record: ${recordId}`);
             }
-         };
+            UUIDTimeStamp = updatedRecord.UUID__c;
 
-         xmlMessage = jsonToXml(JSONMsg.UserMessage, { rootName: 'UserMessage' });
-         xsdPath = './xsd/userXSD/UserCreate.xsd';
-         break;
+            JSONMsg = {
+               UserMessage: {
+                  ActionType: action,
+                  UUID: formatMicroTimestamp(UUIDTimeStamp),
+                  TimeOfAction: formatMicroTimestamp(generateMicroTimestamp()),
+                  EncryptedPassword: updatedRecord.Password__c || "",
+                  FirstName: updatedRecord.FirstName || "",
+                  LastName: updatedRecord.LastName || "",
+                  PhoneNumber: updatedRecord.Phone || "",
+                  EmailAddress: updatedRecord.Email || ""
+               }
+            };
+            xsdPath = './xsd/userXSD/UserUpdate.xsd';
+            break;
 
-      case 'UPDATE':
-         const updatedRecord = await sfClient.sObject('Contact').retrieve(recordId);
-         if (!updatedRecord?.UUID__c) {
-            console.error("❌ Geen UUID gevonden voor recordId:", recordId);
-            return;
-         }
+         case 'DELETE':
+            const query = sfClient.sObject('Contact')
+                .select('UUID__c')
+                .where({ Id: recordId, IsDeleted: true })
+                .limit(1)
+                .scanAll(true);
 
-         UUIDTimeStamp = updatedRecord.UUID__c;
+            const resultDel = await query.run();
+            const deletedRecord = resultDel[0];
 
-         JSONMsg = {
-            "UserMessage": {
-               "ActionType": action,
-               "UUID": formatMicroTimestamp(UUIDTimeStamp),
-               "TimeOfAction": formatMicroTimestamp(generateMicroTimestamp()),
-               "EncryptedPassword": updatedRecord.Password__c || "",
-               "FirstName": updatedRecord.FirstName || "",
-               "LastName": updatedRecord.LastName || "",
-               "PhoneNumber": updatedRecord.Phone || "",
-               "EmailAddress": updatedRecord.Email || ""
+            if (!deletedRecord?.UUID__c) {
+               throw new Error(`Geen UUID gevonden voor verwijderd record: ${recordId}`);
             }
-         };
+            UUIDTimeStamp = deletedRecord.UUID__c;
 
-         xmlMessage = jsonToXml(JSONMsg.UserMessage, { rootName: 'UserMessage' });
-         xsdPath = './xsd/userXSD/UserUpdate.xsd';
-         break;
+            JSONMsg = {
+               UserMessage: {
+                  ActionType: action,
+                  UUID: formatMicroTimestamp(UUIDTimeStamp),
+                  TimeOfAction: formatMicroTimestamp(generateMicroTimestamp())
+               }
+            };
+            xsdPath = './xsd/userXSD/UserDelete.xsd';
+            break;
 
-      case 'DELETE':
-         const query = sfClient.sObject('Contact')
-             .select('UUID__c, Id')
-             .where({ Id: recordId, IsDeleted: true })
-             .limit(1)
-             .scanAll(true);
-
-         const resultDel = await query.run();
-         UUIDTimeStamp = resultDel[0]?.UUID__c || null;
-
-         if (!UUIDTimeStamp) {
-            console.error("❌ Geen UUID gevonden voor verwijderde record:", recordId);
+         default:
+            console.warn("⚠️ Niet gehandelde actie:", action);
             return;
-         }
+      }
 
-         JSONMsg = {
-            "UserMessage": {
-               "ActionType": action,
-               "UUID": formatMicroTimestamp(UUIDTimeStamp),
-               "TimeOfAction": formatMicroTimestamp(generateMicroTimestamp())
-            }
-         };
+      xmlMessage = jsonToXml(JSONMsg.UserMessage, { rootName: 'UserMessage' });
+      if (!validator.validateXml(xmlMessage, xsdPath)) {
+         throw new Error(`XML validatie gefaald voor actie: ${action}`);
+      }
 
-         xmlMessage = jsonToXml(JSONMsg.UserMessage, { rootName: 'UserMessage' });
-         xsdPath = './xsd/userXSD/UserDelete.xsd';
-         break;
+      const exchangeName = 'user';
+      await RMQChannel.assertExchange(exchangeName, 'topic', { durable: true });
 
-      default:
-         console.warn("⚠️ Niet gehandelde actie:", action);
-         return;
-   }
+      const routingKeys = [
+         `frontend.user.${action.toLowerCase()}`,
+         `facturatie.user.${action.toLowerCase()}`,
+         `kassa.user.${action.toLowerCase()}`
+      ];
 
-   // XML Validatie
-   if (!validator.validateXml(xmlMessage, xsdPath)) {
-      console.error(`❌ XML ${action} niet geldig tegen XSD`);
-      return;
-   }
+      for (const routingKey of routingKeys) {
+         RMQChannel.publish(exchangeName, routingKey, Buffer.from(xmlMessage));
+         console.log(`📤 Bericht verstuurd naar ${exchangeName} (${routingKey})`);
+      }
 
-   // RabbitMQ publishing
-   const exchangeName = 'user';
-   await RMQChannel.assertExchange(exchangeName, 'topic', { durable: true });
-
-   const targetBindings = [
-      `frontend.user.${action.toLowerCase()}`,
-      `facturatie.user.${action.toLowerCase()}`,
-      `kassa.user.${action.toLowerCase()}`
-   ];
-
-   for (const routingKey of targetBindings) {
-      RMQChannel.publish(exchangeName, routingKey, Buffer.from(xmlMessage));
-      console.log(`📤 Bericht verstuurd naar exchange "${exchangeName}" met routing key "${routingKey}"`);
+   } catch (error) {
+      console.error(`❌ Kritieke fout tijdens ${action} actie:`, error.message);
+      if (error.response?.body) {
+         console.error('Salesforce API fout details:', error.response.body);
+      }
    }
 };
+
