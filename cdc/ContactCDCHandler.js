@@ -1,6 +1,28 @@
 require('dotenv').config();
-const {jsonToXml} = require("../utils/xmlJsonTranslator");
+const { jsonToXml } = require("../utils/xmlJsonTranslator");
 const validator = require("../utils/xmlValidator");
+
+/**
+ * Converteert een microsecond timestamp naar ISO string met 6 decimalen
+ * @param {number} timestamp - Timestamp in microseconden (16 cijfers)
+ * @returns {string} Geformatteerde ISO string
+ */
+function formatMicroTimestamp(timestamp) {
+   const milliseconds = Math.floor(timestamp / 1000);
+   const microseconds = timestamp % 1000;
+   const iso = new Date(milliseconds).toISOString();
+   return iso.replace(/\.\d{3}Z$/, `.${String(microseconds).padStart(3, '0')}000Z`);
+}
+
+/**
+ * Genereert een huidige timestamp met microseconden precisie
+ * @returns {number} Timestamp in microseconden (16 cijfers)
+ */
+function generateMicroTimestamp() {
+   const now = Date.now();
+   const randomMicro = Math.floor(Math.random() * 1000);
+   return now * 1000 + randomMicro;
+}
 
 /**
  * @module ContactCDCHandler
@@ -10,21 +32,18 @@ const validator = require("../utils/xmlValidator");
  * @param {Object} RMQChannel - Het RabbitMQ-kanaal voor het publiceren van berichten.
  * @returns {Promise<void>}
  */
-module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel) {
-   const {ChangeEventHeader, ...cdcObjectData} = message.payload;
 
-   if (ChangeEventHeader.changeOrigin === "com/salesforce/api/rest/50.0") { // API call CDC event negeren
+module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel) {
+   const { ChangeEventHeader, ...cdcObjectData } = message.payload;
+
+   if (ChangeEventHeader.changeOrigin === "com/salesforce/api/rest/50.0") {
       console.log("🚫 Salesforce API call gedetecteerd, actie overgeslagen.");
       return;
    }
 
    const action = ChangeEventHeader.changeType;
-
    console.log('📥 Salesforce CDC Contact Event ontvangen:', action, cdcObjectData);
 
-   // if (['UPDATE'].includes(action)) {
-   //   console.log("chenged fields:", ChangeEventHeader.changedFields)
-   // }
    let recordId;
    if (['CREATE', 'UPDATE', 'DELETE'].includes(action)) {
       recordId = ChangeEventHeader.recordIds?.[0];
@@ -38,10 +57,10 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
 
    switch (action) {
       case 'CREATE':
-         UUIDTimeStamp = new Date().getTime();
+         UUIDTimeStamp = generateMicroTimestamp();
 
          try {
-            await sfClient.updateUser(recordId, {UUID__c: UUIDTimeStamp});
+            await sfClient.updateUser(recordId, { UUID__c: UUIDTimeStamp });
             console.log("✅ UUID succesvol bijgewerkt");
          } catch (err) {
             console.error("❌ Fout bij instellen UUID:", err.message);
@@ -51,9 +70,9 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
          JSONMsg = {
             "UserMessage": {
                "ActionType": action,
-               "UUID": new Date(UUIDTimeStamp).toISOString(),
-               "TimeOfAction": new Date().toISOString(),
-               "EncryptedPassword": "", // verplicht veld volgens ons XSD stuctuur
+               "UUID": formatMicroTimestamp(UUIDTimeStamp),
+               "TimeOfAction": formatMicroTimestamp(generateMicroTimestamp()),
+               "EncryptedPassword": "",
                "FirstName": cdcObjectData.Name.FirstName || "",
                "LastName": cdcObjectData.Name.LastName || "",
                "PhoneNumber": cdcObjectData.Phone || "",
@@ -61,13 +80,8 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
             }
          };
 
-         xmlMessage = jsonToXml(JSONMsg.UserMessage, {rootName: 'UserMessage'});
+         xmlMessage = jsonToXml(JSONMsg.UserMessage, { rootName: 'UserMessage' });
          xsdPath = './xsd/userXSD/UserCreate.xsd';
-
-         if (!validator.validateXml(xmlMessage, xsdPath)) {
-            console.error('❌ XML Create niet geldig tegen XSD');
-            return;
-         }
          break;
 
       case 'UPDATE':
@@ -82,8 +96,8 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
          JSONMsg = {
             "UserMessage": {
                "ActionType": action,
-               "UUID": new Date(UUIDTimeStamp).toISOString(),
-               "TimeOfAction": new Date().toISOString(),
+               "UUID": formatMicroTimestamp(UUIDTimeStamp),
+               "TimeOfAction": formatMicroTimestamp(generateMicroTimestamp()),
                "EncryptedPassword": updatedRecord.Password__c || "",
                "FirstName": updatedRecord.FirstName || "",
                "LastName": updatedRecord.LastName || "",
@@ -92,21 +106,16 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
             }
          };
 
-         xmlMessage = jsonToXml(JSONMsg.UserMessage, {rootName: 'UserMessage'});
+         xmlMessage = jsonToXml(JSONMsg.UserMessage, { rootName: 'UserMessage' });
          xsdPath = './xsd/userXSD/UserUpdate.xsd';
-
-         if (!validator.validateXml(xmlMessage, xsdPath)) {
-            console.error('❌ XML Update niet geldig tegen XSD');
-            return;
-         }
          break;
 
       case 'DELETE':
          const query = sfClient.sObject('Contact')
-            .select('UUID__c, Id')
-            .where({Id: recordId, IsDeleted: true})
-            .limit(1)
-            .scanAll(true);
+             .select('UUID__c, Id')
+             .where({ Id: recordId, IsDeleted: true })
+             .limit(1)
+             .scanAll(true);
 
          const resultDel = await query.run();
          UUIDTimeStamp = resultDel[0]?.UUID__c || null;
@@ -119,18 +128,13 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
          JSONMsg = {
             "UserMessage": {
                "ActionType": action,
-               "UUID": new Date(UUIDTimeStamp).toISOString(),
-               "TimeOfAction": new Date().toISOString()
+               "UUID": formatMicroTimestamp(UUIDTimeStamp),
+               "TimeOfAction": formatMicroTimestamp(generateMicroTimestamp())
             }
          };
 
-         xmlMessage = jsonToXml(JSONMsg.UserMessage, {rootName: 'UserMessage'});
+         xmlMessage = jsonToXml(JSONMsg.UserMessage, { rootName: 'UserMessage' });
          xsdPath = './xsd/userXSD/UserDelete.xsd';
-
-         if (!validator.validateXml(xmlMessage, xsdPath)) {
-            console.error('❌ XML Delete niet geldig tegen XSD');
-            return;
-         }
          break;
 
       default:
@@ -138,22 +142,24 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
          return;
    }
 
-   const actionLower = action.toLowerCase();
+   // XML Validatie
+   if (!validator.validateXml(xmlMessage, xsdPath)) {
+      console.error(`❌ XML ${action} niet geldig tegen XSD`);
+      return;
+   }
 
-   // console.log('📤 Salesforce Converted Message:', JSON.stringify(JSONMsg, null, 2));
-
+   // RabbitMQ publishing
    const exchangeName = 'user';
-
-   await RMQChannel.assertExchange(exchangeName, 'topic', {durable: true});
+   await RMQChannel.assertExchange(exchangeName, 'topic', { durable: true });
 
    const targetBindings = [
-      `frontend.user.${actionLower}`,
-      `facturatie.user.${actionLower}`,
-      `kassa.user.${actionLower}`
+      `frontend.user.${action.toLowerCase()}`,
+      `facturatie.user.${action.toLowerCase()}`,
+      `kassa.user.${action.toLowerCase()}`
    ];
 
    for (const routingKey of targetBindings) {
       RMQChannel.publish(exchangeName, routingKey, Buffer.from(xmlMessage));
       console.log(`📤 Bericht verstuurd naar exchange "${exchangeName}" met routing key "${routingKey}"`);
    }
-}
+};
