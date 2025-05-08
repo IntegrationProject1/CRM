@@ -4,49 +4,23 @@ const validator = require("../utils/xmlValidator");
 const hrtimeBase = process.hrtime.bigint();
 
 /**
- * @fileoverview Functies voor het genereren en formatteren van microseconden-precieze timestamps
- * @module TimestampUtils
- */
-
-/**
- * Genereert een hoog-precisie timestamp met microseconden resolutie
- * @returns {number} Microseconden timestamp (16 cijfers: millis + micros)
+ * Generates the current ISO 8601 timestamp with microsecond precision.
+ * @returns {string} ISO 8601 date-time string with microseconds.
  * @example
- * const ts = generateMicroTimestamp(); // 1746638069480652
+ * generateIsoMicroTimestamp();
+ * // "2025-05-07T17:14:29.480652Z"
  * @description
- * Combineert Date.now() milliseconden met process.hrtime() nanoseconden
- * om een unieke 16-cijferige timestamp te maken:
- * - Eerste 13 cijfers: UNIX milliseconden
- * - Laatste 3 cijfers: microseconden (0-999)
- * @see {@link https://nodejs.org/api/process.html#processhrtimebigint process.hrtime() documentatie}
+ * Combines `Date.now()` milliseconds with `process.hrtime()` nanoseconds
+ * to create a unique timestamp with microsecond precision.
  */
-
-function generateMicroTimestamp() {
-   const now = Date.now();
+function generateMicroDateTime() {
    const diffNs = process.hrtime.bigint() - hrtimeBase;
    const micros = Number((diffNs / 1000n) % 1000000n);
-   return now * 1000 + micros;
-}
-
-/**
- * Formatteert een microseconden-timestamp naar ISO 8601 met 6 decimalen
- * @param {number} timestamp - Microseconden timestamp (van generateMicroTimestamp)
- * @returns {string} ISO 8601 datumtijd string met microseconden
- * @example
- * formatMicroTimestamp(1746638069480652);
- * // "2025-05-07T17:14:29.480652Z"
- * @throws {TypeError} Als de input niet numeriek is
- * @description
- * Converteert de timestamp in twee stappen:
- * 1. Splitst in millis (eerste 13 cijfers) en micros (laatste 3 cijfers)
- * 2. Combineert met Date's ISO string voor correcte tijdzone afhandeling
- */
-function formatMicroTimestamp(timestamp) {
+   const timestamp = Date.now() * 1000 + micros;
    const millis = Math.floor(timestamp / 1000);
-   const micros = timestamp % 1000;
-   const date = new Date(millis);
-   return date.toISOString()
-       .replace(/\.\d{3}Z$/, `.${date.getUTCMilliseconds().toString().padStart(3, '0')}${micros.toString().padStart(3, '0')}Z`);
+   const now = new Date(millis);
+   const micros2 = timestamp % 1000;
+   return now.toISOString().replace('Z', micros2.toString().padStart(3, '0') + 'Z');
 }
 
 /**
@@ -57,7 +31,6 @@ function formatMicroTimestamp(timestamp) {
  * @param {Object} RMQChannel - Het RabbitMQ-kanaal voor het publiceren van berichten.
  * @returns {Promise<void>}
  */
-
 module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel) {
    const { ChangeEventHeader, ...cdcObjectData } = message.payload;
 
@@ -67,7 +40,7 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
    }
 
    const action = ChangeEventHeader.changeType;
-   console.log('📥 Salesforce CDC Contact Event ontvangen:', action);
+   console.log('📥 Salesforce CDC Contact Event ontvangen:', action, cdcObjectData);
 
    let recordId;
    if (['CREATE', 'UPDATE', 'DELETE'].includes(action)) {
@@ -75,7 +48,7 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
       if (!recordId) return console.error('❌ Geen recordId gevonden.');
    }
 
-   let UUIDTimeStamp;
+   let UUID;
    let JSONMsg;
    let xmlMessage;
    let xsdPath;
@@ -83,16 +56,16 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
    try {
       switch (action) {
          case 'CREATE':
-            UUIDTimeStamp = generateMicroTimestamp();
-            await sfClient.updateUser(recordId, { UUID__c: UUIDTimeStamp.toString() });
-            console.log("✅ UUID succesvol bijgewerkt:", UUIDTimeStamp);
+            UUID = generateMicroDateTime();
+            await sfClient.updateUser(recordId, { UUID__c: UUID });
+            console.log("✅ UUID succesvol bijgewerkt:", UUID);
 
             JSONMsg = {
                UserMessage: {
                   ActionType: action,
-                  UUID: formatMicroTimestamp(UUIDTimeStamp),
-                  TimeOfAction: formatMicroTimestamp(generateMicroTimestamp()),
-                  EncryptedPassword: "",
+                  UUID: UUID,
+                  TimeOfAction: new Date().toISOString(),
+                  EncryptedPassword: cdcObjectData.Password__c || "",
                   FirstName: cdcObjectData.Name?.FirstName || "",
                   LastName: cdcObjectData.Name?.LastName || "",
                   PhoneNumber: cdcObjectData.Phone || "",
@@ -107,13 +80,12 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
             if (!updatedRecord?.UUID__c) {
                throw new Error(`Geen UUID gevonden voor record: ${recordId}`);
             }
-            UUIDTimeStamp = updatedRecord.UUID__c;
 
             JSONMsg = {
                UserMessage: {
                   ActionType: action,
-                  UUID: formatMicroTimestamp(UUIDTimeStamp),
-                  TimeOfAction: formatMicroTimestamp(generateMicroTimestamp()),
+                  UUID: updatedRecord.UUID__c,
+                  TimeOfAction: new Date().toISOString(),
                   EncryptedPassword: updatedRecord.Password__c || "",
                   FirstName: updatedRecord.FirstName || "",
                   LastName: updatedRecord.LastName || "",
@@ -137,13 +109,12 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
             if (!deletedRecord?.UUID__c) {
                throw new Error(`Geen UUID gevonden voor verwijderd record: ${recordId}`);
             }
-            UUIDTimeStamp = deletedRecord.UUID__c;
 
             JSONMsg = {
                UserMessage: {
                   ActionType: action,
-                  UUID: formatMicroTimestamp(UUIDTimeStamp),
-                  TimeOfAction: formatMicroTimestamp(generateMicroTimestamp())
+                  UUID: deletedRecord.UUID__c,
+                  TimeOfAction: new Date().toISOString(),
                }
             };
             xsdPath = './xsd/userXSD/UserDelete.xsd';
