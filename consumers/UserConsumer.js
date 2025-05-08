@@ -3,7 +3,6 @@
  * @description Beheert de verwerking van berichten uit RabbitMQ-queues voor het aanmaken, bijwerken en verwijderen van gebruikers in Salesforce.
  */
 
-const libxmljs = require('libxmljs2');
 const xmlJsonTranslator = require("../utils/xmlJsonTranslator");
 
 /**
@@ -47,7 +46,7 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
             // retrieve Salesforce ID from UUID
             const query = salesforceClient.sObject("Contact")
                .select("Id")
-               .find({ UUID__c: objectData.UUID })
+               .where({ UUID__c: objectData.UUID })
                .limit(1);
 
             let result;
