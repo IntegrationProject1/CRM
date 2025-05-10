@@ -28,6 +28,27 @@ jobs:
         run: echo "⚠️ No test setup yet, skipping"
         # Uncomment and replace with actual test command when ready
         # run: npm test
+      - name: Create .env file from GitHub Secrets
+        run: |
+          echo "SALESFORCE_CLIENT_ID=${{ secrets.SALESFORCE_CLIENT_ID }}" >> $GITHUB_ENV
+          echo "SALESFORCE_CLIENT_SECRET=${{ secrets.SALESFORCE_CLIENT_SECRET }}" >> $GITHUB_ENV
+          echo "SALESFORCE_USERNAME=${{ secrets.SALESFORCE_USERNAME }}" >> $GITHUB_ENV
+          echo "SALESFORCE_PASSWORD=${{ secrets.SALESFORCE_PASSWORD }}" >> $GITHUB_ENV
+          echo "SALESFORCE_TOKEN=${{ secrets.SALESFORCE_TOKEN }}" >> $GITHUB_ENV
+          echo "SALESFORCE_LOGIN_URL=${{ secrets.SALESFORCE_LOGIN_URL }}" >> $GITHUB_ENV
+          echo "SALESFORCE_URL=${{ secrets.SALESFORCE_URL }}" >> $GITHUB_ENV
+          echo "SALESFORCE_ACCESS_TOKEN=${{ secrets.SALESFORCE_ACCESS_TOKEN }}" >> $GITHUB_ENV
+          echo "RABBITMQ_HOST=${{ secrets.RABBITMQ_HOST }}" >> $GITHUB_ENV
+          echo "RABBITMQ_PORT=${{ secrets.RABBITMQ_PORT }}" >> $GITHUB_ENV
+          echo "RABBITMQ_USERNAME=${{ secrets.RABBITMQ_USERNAME }}" >> $GITHUB_ENV
+          echo "RABBITMQ_PASSWORD=${{ secrets.RABBITMQ_PASSWORD }}" >> $GITHUB_ENV
+          echo "RABBITMQ_EXCHANGE_HEARTBEAT=${{ secrets.RABBITMQ_EXCHANGE_HEARTBEAT }}" >> $GITHUB_ENV
+          echo "LOG_LEVEL=${{ secrets.LOG_LEVEL }}" >> $GITHUB_ENV
+          echo "GENERAL_LOG_FILE=${{ secrets.GENERAL_LOG_FILE }}" >> $GITHUB_ENV
+          echo "HEARTBEAT_LOG_FILE=${{ secrets.HEARTBEAT_LOG_FILE }}" >> $GITHUB_ENV
+          echo "USER_LOG_FILE=${{ secrets.USER_LOG_FILE }}" >> $GITHUB_ENV
+          echo "EVENT_LOG_FILE=${{ secrets.EVENT_LOG_FILE }}" >> $GITHUB_ENV
+          echo "SESSION_LOG_FILE=${{ secrets.SESSION_LOG_FILE }}" >> $GITHUB_ENV
       - name: Test Docker Compose
         run: |
           docker compose up -d        # Fix: Use -d for detached mode
