@@ -1,5 +1,6 @@
 name: CI/CD Pipeline
 
+# Trigger the workflow on pushes and pull requests to the main branch
 on:
   push:
     branches: [ main ]
@@ -7,10 +8,12 @@ on:
     branches: [ main ]
 
 jobs:
+  # Job to run tests (placeholder for now)
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
@@ -22,15 +25,19 @@ jobs:
         run: npm ci
 
       - name: Run tests
-        run: echo "⚠️ Nog geen test setup, overslaan"
+        run: echo "⚠️ No test setup yet, skipping"
+        # Uncomment and replace with actual test command when ready
         # run: npm test
 
+  # Job to build and deploy the Docker image
   build-and-deploy:
     needs: test
     runs-on: ubuntu-latest
+    # Only run this job on push to main, not on pull requests
     if: github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -39,7 +46,7 @@ jobs:
         run: docker build -t crm-service:latest .
 
       - name: Save Docker image as tarball
-        run: docker save crm-service:latest > crm-service.tar
+        run: docker save crm-service:latest -o crm-service.tar
 
       - name: Set up SSH agent
         uses: webfactory/ssh-agent@v0.7.0
@@ -48,12 +55,40 @@ jobs:
 
       - name: Upload Docker image to server
         run: |
-          scp -P ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no crm-service.tar ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/tmp/crm-service.tar
+          scp -P ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no crm-service.tar ${{ secrets.SERVER_USER }}@${{ secrets.SSH_HOST }}:/tmp/crm-service.tar
 
       - name: Deploy Docker image on server
         run: |
-          ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << EOF
-          docker load < /tmp/crm-service.tar
+          ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+          docker load -i /tmp/crm-service.tar
+          mkdir -p ~/crmV2
           cd ~/crmV2
-          docker compose -f compose.yml --env-file .env.production up -d --build
+
+          # Create docker-compose.yml if it doesn't exist
+          if [ ! -f docker-compose.yml ]; then
+            echo "Creating docker-compose.yml on the server..."
+            cat > docker-compose.yml << 'COMPOSE'
+version: '3.8'
+
+services:
+  crm-service:
+    image: crm-service:latest
+    container_name: crm-service
+    env_file:
+      - .env.production
+    networks:
+      - rabbitmq_project_network
+    restart: unless-stopped
+
+networks:
+  rabbitmq_project_network:
+    external: true
+COMPOSE
+          fi
+
+          # Run the Docker container using docker-compose
+          docker-compose --env-file .env.production up -d
+
+          # Clean up the tarball
+          rm /tmp/crm-service.tar
           EOF
