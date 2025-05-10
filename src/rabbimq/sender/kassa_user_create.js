@@ -1,1 +1,0 @@
-//sender for kassa_user_create queue in rabbitmq
