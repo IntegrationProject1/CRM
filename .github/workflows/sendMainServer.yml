@@ -28,67 +28,36 @@ jobs:
         run: echo "⚠️ No test setup yet, skipping"
         # Uncomment and replace with actual test command when ready
         # run: npm test
+      - name: Test Docker Compose
+        run: |
+          docker compose up -d        # Fix: Use -d for detached mode
+          sleep 10                    # Wait for containers to start
+          docker ps                   # Verify running containers
+          docker compose down         # Clean up
 
   # Job to build and deploy the Docker image
-  build-and-deploy:
+  deploy:
+    name: Deploy To Server
     needs: test
     runs-on: ubuntu-latest
-    # Only run this job on push to main, not on pull requests
-    if: github.ref == 'refs/heads/main'
+    environment: environment
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      - name: Build Docker image
-        run: docker build -t crm-service:latest .
-
-      - name: Save Docker image as tarball
-        run: docker save crm-service:latest -o crm-service.tar
-
-      - name: Set up SSH agent
-        uses: webfactory/ssh-agent@v0.7.0
+      - name: Setup SSH Connection
+        uses: appleboy/ssh-action@v1.1.0
         with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-      - name: Upload Docker image to server
-        run: |
-          scp -P ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no crm-service.tar ${{ secrets.SERVER_USER }}@${{ secrets.SSH_HOST }}:/tmp/crm-service.tar
-
-      - name: Deploy Docker image on server
-        run: |
-          ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
-          docker load -i /tmp/crm-service.tar
-          mkdir -p ~/crmV2
-          cd ~/crmV2
-
-          # Create docker-compose.yml if it doesn't exist
-          if [ ! -f docker-compose.yml ]; then
-            echo "Creating docker-compose.yml on the server..."
-            cat > docker-compose.yml << 'COMPOSE'
-version: '3.8'
-
-services:
-  crm-service:
-    image: crm-service:latest
-    container_name: crm-service
-    env_file:
-      - .env.production
-    networks:
-      - rabbitmq_project_network
-    restart: unless-stopped
-
-networks:
-  rabbitmq_project_network:
-    external: true
-COMPOSE
-          fi
-
-          # Run the Docker container using docker-compose
-          docker-compose --env-file .env.production up -d
-
-          # Clean up the tarball
-          rm /tmp/crm-service.tar
-          EOF
+          debug: true
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            if [ ! -d "~/crmV2" ]; then
+              mkdir -p ~/crmV2
+              git clone https://github.com/IntegrationProject1/CRM.git ~/crmV2
+            fi
+            cd ~/crmV2
+            git pull origin main
+            docker compose pull crm-service
+            docker compose up -d --no-deps --build crm-service
+            docker image prune -f 
