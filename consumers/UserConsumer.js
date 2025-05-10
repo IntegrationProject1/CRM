@@ -49,6 +49,7 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
                .where({ UUID__c: objectData.UUID })
                .limit(1);
 
+
             let result;
             try {
                result = await query.run();

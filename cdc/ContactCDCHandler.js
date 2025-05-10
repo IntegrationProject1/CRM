@@ -151,4 +151,3 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
       }
    }
 };
-
