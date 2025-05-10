@@ -39,7 +39,7 @@ jobs:
         run: docker build -t crm-service:latest .
 
       - name: Save Docker image as tarball
-        run: docker save crm-service:latest -o crm-service.tar
+        run: docker save crm-service:latest > crm-service.tar
 
       - name: Set up SSH agent
         uses: webfactory/ssh-agent@v0.7.0
@@ -52,7 +52,8 @@ jobs:
 
       - name: Deploy Docker image on server
         run: |
-          ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
-          docker load -i /tmp/crm-service.tar
+          ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << EOF
+          docker load < /tmp/crm-service.tar
           cd ~/crmV2
-          docker compose --env-file .env.production up -d --build
+          docker compose -f compose.yml --env-file .env.production up -d --build
+          EOF
