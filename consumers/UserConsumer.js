@@ -3,7 +3,6 @@
  * @description Beheert de verwerking van berichten uit RabbitMQ-queues voor het aanmaken, bijwerken en verwijderen van gebruikers in Salesforce.
  */
 
-const libxmljs = require('libxmljs2');
 const xmlJsonTranslator = require("../utils/xmlJsonTranslator");
 
 /**
@@ -42,18 +41,14 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
          }
          const objectData = jsonConv.UserMessage;
 
-         // Convert UUID to timestamp (number) for Salesforce
-         const UUIDTimeStamp = new Date(objectData.UUID).getTime();
-
          let SalesforceObjId;
-         if (['update', 'delete'].includes(action)) {
+         if (['update', 'delete'].includes(action)) { // Salesforce object ID ophalen (op basis van UUID) voor update/delete
             // retrieve Salesforce ID from UUID
-            const results = await salesforceClient
-            .sObject('Contact')
-            .select('Id, UUID__c')
-            .where({ UUID__c: UUIDTimeStamp })
-            .execute();
-          
+            const query = salesforceClient.sObject("Contact")
+               .select("Id")
+               .where({ UUID__c: objectData.UUID })
+               .limit(1);
+
 
             let result;
             try {
@@ -84,7 +79,7 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
             case "create":
                try {
                   JSONMsg = {
-                     "UUID__c": UUIDTimeStamp, // Convert to timestamp (number) for Salesforce
+                     "UUID__c": objectData.UUID,
                      "TimeOfAction__c": objectData.TimeOfAction__c,
                      "Password__c": objectData.EncryptedPassword || "",
                      "FirstName": objectData.FirstName || "",

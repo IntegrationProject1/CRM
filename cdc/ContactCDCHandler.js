@@ -1,6 +1,27 @@
 require('dotenv').config();
-const {jsonToXml} = require("../utils/xmlJsonTranslator");
+const { jsonToXml } = require("../utils/xmlJsonTranslator");
 const validator = require("../utils/xmlValidator");
+const hrtimeBase = process.hrtime.bigint();
+
+/**
+ * Generates the current ISO 8601 timestamp with microsecond precision.
+ * @returns {string} ISO 8601 date-time string with microseconds.
+ * @example
+ * generateIsoMicroTimestamp();
+ * // "2025-05-07T17:14:29.480652Z"
+ * @description
+ * Combines `Date.now()` milliseconds with `process.hrtime()` nanoseconds
+ * to create a unique timestamp with microsecond precision.
+ */
+function generateMicroDateTime() {
+   const diffNs = process.hrtime.bigint() - hrtimeBase;
+   const micros = Number((diffNs / 1000n) % 1000000n);
+   const timestamp = Date.now() * 1000 + micros;
+   const millis = Math.floor(timestamp / 1000);
+   const now = new Date(millis);
+   const micros2 = timestamp % 1000;
+   return now.toISOString().replace('Z', micros2.toString().padStart(3, '0') + 'Z');
+}
 
 /**
  * @module ContactCDCHandler
@@ -11,149 +32,122 @@ const validator = require("../utils/xmlValidator");
  * @returns {Promise<void>}
  */
 module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel) {
-   const {ChangeEventHeader, ...objectData} = message.payload;
+   const { ChangeEventHeader, ...cdcObjectData } = message.payload;
 
-   if (ChangeEventHeader.changeOrigin === "com/salesforce/api/rest/50.0") { // API call CDC event negeren
+   if (ChangeEventHeader.changeOrigin === "com/salesforce/api/rest/50.0") {
       console.log("🚫 Salesforce API call gedetecteerd, actie overgeslagen.");
       return;
    }
 
    const action = ChangeEventHeader.changeType;
+   console.log('📥 Salesforce CDC Contact Event ontvangen:', action, cdcObjectData);
 
-   console.log('📥 Salesforce CDC Contact Event ontvangen:', action, ChangeEventHeader, objectData);
-
-   // if (['UPDATE'].includes(action)) {
-   //   console.log("chenged fields:", ChangeEventHeader.changedFields)
-   // }
    let recordId;
    if (['CREATE', 'UPDATE', 'DELETE'].includes(action)) {
       recordId = ChangeEventHeader.recordIds?.[0];
       if (!recordId) return console.error('❌ Geen recordId gevonden.');
    }
 
-   let UUIDTimeStamp;
+   let UUID;
    let JSONMsg;
    let xmlMessage;
    let xsdPath;
 
-   switch (action) {
-      case 'CREATE':
-         UUIDTimeStamp = new Date().getTime();
+   try {
+      switch (action) {
+         case 'CREATE':
+            UUID = generateMicroDateTime();
+            await sfClient.updateUser(recordId, { UUID__c: UUID });
+            console.log("✅ UUID succesvol bijgewerkt:", UUID);
 
-         try {
-            await sfClient.updateUser(recordId, {UUID__c: UUIDTimeStamp});
-            console.log("✅ UUID succesvol bijgewerkt");
-         } catch (err) {
-            console.error("❌ Fout bij instellen UUID:", err.message);
-            return;
-         }
+            JSONMsg = {
+               UserMessage: {
+                  ActionType: action,
+                  UUID: UUID,
+                  TimeOfAction: new Date().toISOString(),
+                  EncryptedPassword: cdcObjectData.Password__c || "",
+                  FirstName: cdcObjectData.Name?.FirstName || "",
+                  LastName: cdcObjectData.Name?.LastName || "",
+                  PhoneNumber: cdcObjectData.Phone || "",
+                  EmailAddress: cdcObjectData.Email || ""
+               }
+            };
+            xsdPath = './xsd/userXSD/UserCreate.xsd';
+            break;
 
-         JSONMsg = {
-            "UserMessage": {
-               "ActionType": action,
-               "UUID": new Date(UUIDTimeStamp).toISOString(),
-               "TimeOfAction": new Date().toISOString(),
-               "EncryptedPassword": "", // verplicht veld volgens ons XSD stuctuur
-               "FirstName": objectData.FirstName || "",
-               "LastName": objectData.LastName || "",
-               "PhoneNumber": objectData.Phone || "",
-               "EmailAddress": objectData.Email || ""
+         case 'UPDATE':
+            const updatedRecord = await sfClient.sObject('Contact').retrieve(recordId);
+            if (!updatedRecord?.UUID__c) {
+               throw new Error(`Geen UUID gevonden voor record: ${recordId}`);
             }
-         };
 
-         xmlMessage = jsonToXml(JSONMsg.UserMessage, {rootName: 'UserMessage'});
-         xsdPath = './xsd/userXSD/UserCreate.xsd';
+            JSONMsg = {
+               UserMessage: {
+                  ActionType: action,
+                  UUID: updatedRecord.UUID__c,
+                  TimeOfAction: new Date().toISOString(),
+                  EncryptedPassword: updatedRecord.Password__c || "",
+                  FirstName: updatedRecord.FirstName || "",
+                  LastName: updatedRecord.LastName || "",
+                  PhoneNumber: updatedRecord.Phone || "",
+                  EmailAddress: updatedRecord.Email || ""
+               }
+            };
+            xsdPath = './xsd/userXSD/UserUpdate.xsd';
+            break;
 
-         if (!validator.validateXml(xmlMessage, xsdPath)) {
-            console.error('❌ XML Create niet geldig tegen XSD');
-            return;
-         }
-         break;
+         case 'DELETE':
+            const query = sfClient.sObject('Contact')
+                .select('UUID__c')
+                .where({ Id: recordId, IsDeleted: true })
+                .limit(1)
+                .scanAll(true);
 
-      case 'UPDATE':
-         const resultUpd = await sfClient.sObject('Contact').retrieve(recordId);
-         if (!resultUpd?.UUID__c) {
-            console.error("❌ Geen UUID gevonden voor recordId:", recordId);
-            return;
-         }
+            const resultDel = await query.run();
+            const deletedRecord = resultDel[0];
 
-         UUIDTimeStamp = resultUpd.UUID__c;
-
-         JSONMsg = {
-            "UserMessage": {
-               "ActionType": action,
-               "UUID": new Date(UUIDTimeStamp).toISOString(),
-               "TimeOfAction": new Date().toISOString(),
-               "EncryptedPassword": "",
-               "FirstName": objectData.FirstName || "",
-               "LastName": objectData.LastName || "",
-               "PhoneNumber": objectData.Phone || "",
-               "EmailAddress": objectData.Email || ""
+            if (!deletedRecord?.UUID__c) {
+               throw new Error(`Geen UUID gevonden voor verwijderd record: ${recordId}`);
             }
-         };
 
-         xmlMessage = jsonToXml(JSONMsg.UserMessage, {rootName: 'UserMessage'});
-         xsdPath = './xsd/userXSD/UserUpdate.xsd';
+            JSONMsg = {
+               UserMessage: {
+                  ActionType: action,
+                  UUID: deletedRecord.UUID__c,
+                  TimeOfAction: new Date().toISOString(),
+               }
+            };
+            xsdPath = './xsd/userXSD/UserDelete.xsd';
+            break;
 
-         if (!validator.validateXml(xmlMessage, xsdPath)) {
-            console.error('❌ XML Update niet geldig tegen XSD');
+         default:
+            console.warn("⚠️ Niet gehandelde actie:", action);
             return;
-         }
-         break;
+      }
 
-      case 'DELETE':
-         const query = sfClient.sObject('Contact')
-            .select('UUID__c, Id')
-            .where({Id: recordId, IsDeleted: true})
-            .limit(1)
-            .scanAll(true);
+      xmlMessage = jsonToXml(JSONMsg.UserMessage, { rootName: 'UserMessage' });
+      if (!validator.validateXml(xmlMessage, xsdPath)) {
+         throw new Error(`XML validatie gefaald voor actie: ${action}`);
+      }
 
-         const resultDel = await query.run();
-         UUIDTimeStamp = resultDel[0]?.UUID__c || null;
+      const exchangeName = 'user';
+      await RMQChannel.assertExchange(exchangeName, 'topic', { durable: true });
 
-         if (!UUIDTimeStamp) {
-            console.error("❌ Geen UUID gevonden voor verwijderde record:", recordId);
-            return;
-         }
+      const routingKeys = [
+         `frontend.user.${action.toLowerCase()}`,
+         `facturatie.user.${action.toLowerCase()}`,
+         `kassa.user.${action.toLowerCase()}`
+      ];
 
-         JSONMsg = {
-            "UserMessage": {
-               "ActionType": action,
-               "UUID": new Date(UUIDTimeStamp).toISOString(),
-               "TimeOfAction": new Date().toISOString()
-            }
-         };
+      for (const routingKey of routingKeys) {
+         RMQChannel.publish(exchangeName, routingKey, Buffer.from(xmlMessage));
+         console.log(`📤 Bericht verstuurd naar ${exchangeName} (${routingKey})`);
+      }
 
-         xmlMessage = jsonToXml(JSONMsg.UserMessage, {rootName: 'UserMessage'});
-         xsdPath = './xsd/userXSD/UserDelete.xsd';
-
-         if (!validator.validateXml(xmlMessage, xsdPath)) {
-            console.error('❌ XML Delete niet geldig tegen XSD');
-            return;
-         }
-         break;
-
-      default:
-         console.warn("⚠️ Niet gehandelde actie:", action);
-         return;
+   } catch (error) {
+      console.error(`❌ Kritieke fout tijdens ${action} actie:`, error.message);
+      if (error.response?.body) {
+         console.error('Salesforce API fout details:', error.response.body);
+      }
    }
-
-   const actionLower = action.toLowerCase();
-
-   // console.log('📤 Salesforce Converted Message:', JSON.stringify(JSONMsg, null, 2));
-
-   const exchangeName = 'user';
-
-   await RMQChannel.assertExchange(exchangeName, 'topic', {durable: true});
-
-   const targetBindings = [
-      `frontend.user.${actionLower}`,
-      `facturatie.user.${actionLower}`,
-      `kassa.user.${actionLower}`
-   ];
-
-   for (const routingKey of targetBindings) {
-      RMQChannel.publish(exchangeName, routingKey, Buffer.from(xmlMessage));
-      console.log(`📤 Bericht verstuurd naar exchange "${exchangeName}" met routing key "${routingKey}"`);
-   }
-}
+};

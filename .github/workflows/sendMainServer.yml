@@ -33,13 +33,8 @@ jobs:
           fi
           ENDSSH
 
-      - name: Backup previous state
-        if: env.image_exists == 'true'
-        run: |
-          ssh -v -o StrictHostKeyChecking=no -i ~/private_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} <<'ENDSSH'
-          cd ${{ env.APP_REPOSITORY_DIR }}
-          docker tag facturatie-facturatie:latest facturatie-facturatie:backup
-          ENDSSH
+      - name: Save Docker image as tarball
+        run: docker save crm-service:latest > crm-service.tar
 
       - name: Deploy new version
         run: |
@@ -74,9 +69,8 @@ jobs:
       - name: Rollback on failure
         if: env.deployment_success != 'true'
         run: |
-          ssh -v -o StrictHostKeyChecking=no -i ~/private_key ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} <<'ENDSSH'
-          cd ${{ env.APP_REPOSITORY_DIR }}
-          docker compose down
-          docker run -d --name restored_container facturatie-facturatie:backup
-          docker compose up -d
-          ENDSSH
+          ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << EOF
+          docker load < /tmp/crm-service.tar
+          cd ~/crmV2
+          docker compose -f compose.yml --env-file .env.production up -d --build
+          EOF
