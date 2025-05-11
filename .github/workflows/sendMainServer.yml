@@ -78,9 +78,9 @@ jobs:
           sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USERNAME@$SSH_HOST" << 'EOF'
             cd ~/crmV2
             git checkout main
-            echo checkout
-            git pull
-            echo pull
+            echo "checkout"
+            git pull origin main
+            echo "pull"
             docker compose pull crm-service
             docker compose up -d --no-deps --build crm-service
             docker image prune -f
