@@ -70,10 +70,10 @@ jobs:
 
       - name: Deploy to Server
         env:
-          SSH_HOST: ${{ secrets.SSH_HOST }}
-          SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
-          SSH_PASSWORD: ${{ secrets.SSH_PASSWORD }}
-          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_HOST: ${{ secrets.SERVER_HOST }}
+          SSH_USERNAME: ${{ secrets.SERVER_USERNAME }}
+          SSH_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
+          SSH_PORT: ${{ secrets.SERVER_PORT }}
         run: |
           sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USERNAME@$SSH_HOST" << 'EOF'
             cd ~/crmV2
