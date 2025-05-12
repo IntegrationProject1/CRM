@@ -1,5 +1,5 @@
 const path = require('path');
-const {validateXml} = require('../utils/xmlValidator');
+const { validateXml } = require('../utils/xmlValidator');
 
 /**
  * Starts sending periodic heartbeat messages to a RabbitMQ exchange.
@@ -10,24 +10,44 @@ const {validateXml} = require('../utils/xmlValidator');
  */
 
 async function startHeartbeat(channel, exchangeName, serviceName = 'CRM_Service') {
-   await channel.assertExchange(exchangeName, 'direct', {durable: true});
+   try {
+      // 1. Exchange aanmaken
+      await channel.assertExchange(exchangeName, 'direct', { durable: true });
 
-   setInterval(() => {
-      const xml = `
-            <Heartbeat>
-              <ServiceName>${serviceName}</ServiceName>
-            </Heartbeat>`.trim();
+      // 2. Queue aanmaken en binden met lege routing key
+      const queueName = exchangeName; // Gebruik dezelfde naam als exchange
+      await channel.assertQueue(queueName, {
+         durable: true,
+         arguments: {
+            'x-queue-type': 'classic' // Explicitiet voor classic queues
+         }
+      });
 
-      const xsdPath = path.join(__dirname, '../xsd/heartbeatXSD/heartbeat.xsd');
+      // 3. Bind queue aan exchange
+      await channel.bindQueue(queueName, exchangeName, '');
 
-      if (!validateXml(xml, xsdPath)) {
-         console.error('❌ Heartbeat XML is niet geldig tegen XSD. Bericht NIET verzonden.');
-         return;
-      }
+      // 4. Start heartbeat interval
+      setInterval(() => {
+         const xml = `
+                <Heartbeat>
+                    <ServiceName>${serviceName}</ServiceName>
+                </Heartbeat>`.trim();
 
-      channel.publish(exchangeName, '', Buffer.from(xml));
-      // console.log('📡 Geldige Heartbeat verzonden:\n', xml);
-   }, 1000); // 1000 = 1 seconde
+         const xsdPath = path.join(__dirname, '../xsd/heartbeatXSD/heartbeat.xsd');
+
+         if (!validateXml(xml, xsdPath)) {
+            console.error('❌ Heartbeat XML is niet geldig tegen XSD. Bericht NIET verzonden.');
+            return;
+         }
+
+         channel.publish(exchangeName, '', Buffer.from(xml));
+         console.log('📡 Geldige Heartbeat verzonden naar queue:', xml);
+      }, 1000);
+
+   } catch (error) {
+      console.error('❌ Fout in heartbeat setup:', error);
+      throw error;
+   }
 }
 
 module.exports = startHeartbeat;
