@@ -14,6 +14,7 @@ services:
 networks:
   rabbitmq_project_network:
     external: false
+
 #docker-compose -f docker-compose.rabbitmq.yml up
 #docker-compose up --build  voor de microserver
 # of

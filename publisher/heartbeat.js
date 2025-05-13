@@ -1,24 +1,34 @@
-const os = require('os');
 const path = require('path');
-const { validateXml } = require('../xmlValidator');
+const {validateXml} = require('../utils/xmlValidator');
 
-function startHeartbeat(channel, exchangeName, serviceName = 'CRM_Service') {
-    setInterval(() => {
-        const xml = `
-<Heartbeat>
-  <ServiceName>${serviceName}</ServiceName>
-</Heartbeat>`.trim();
+/**
+ * Starts sending periodic heartbeat messages to a RabbitMQ exchange.
+ * @param {Object} channel - RabbitMQ channel to publish messages.
+ * @param {string} exchangeName - Name of the exchange to publish to.
+ * @param routingKey
+ * @param {string} [serviceName='CRM_Service'] - Service name (optional).
+ * @returns {Promise<void>} Resolves when exchange is set and interval starts.
+ */
 
-        const xsdPath = path.join(__dirname, '../xsd/heartbeatXSD/heartbeat.xsd');
+async function startHeartbeat(channel, exchangeName, routingKey, serviceName = 'CRM_Service') {
+   await channel.assertExchange(exchangeName, 'direct', {durable: true});
 
-        if (!validateXml(xml, xsdPath)) {
-            console.error('❌ Heartbeat XML is niet geldig tegen XSD. Bericht NIET verzonden.');
-            return;
-        }
+   setInterval(() => {
+      const xml = `
+            <Heartbeat>
+              <ServiceName>${serviceName}</ServiceName>
+            </Heartbeat>`.trim();
 
-        channel.publish(exchangeName, '', Buffer.from(xml));
-        console.log('📡 Geldige Heartbeat verzonden:\n', xml);
-    }, 5000); // elke 5 seconden
+      const xsdPath = path.join(__dirname, '../xsd/heartbeatXSD/heartbeat.xsd');
+
+      if (!validateXml(xml, xsdPath)) {
+         console.error('❌ Heartbeat XML is niet geldig tegen XSD. Bericht NIET verzonden.');
+         return;
+      }
+
+      channel.publish(exchangeName, routingKey, Buffer.from(xml));
+      // console.log('📡 Geldige Heartbeat verzonden:\n', xml);
+   }, 1000); // 1000 = 1 seconde
 }
 
 module.exports = startHeartbeat;

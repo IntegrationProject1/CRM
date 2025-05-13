@@ -1,5 +1,6 @@
 name: CI/CD Pipeline
 
+# Trigger the workflow on pushes and pull requests to the main branch
 on:
   push:
     branches: [ main ]
@@ -7,53 +8,78 @@ on:
     branches: [ main ]
 
 jobs:
-  test:
+  # Job to run tests (placeholder for now)
+#  test:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Checkout repository
+#        uses: actions/checkout@v3
+#
+#      - name: Set up Node.js
+#        uses: actions/setup-node@v3
+#        with:
+#          node-version: '18'
+#          cache: 'npm'
+#
+#      - name: Install dependencies
+#        run: npm ci
+#
+#      - name: Run tests
+#        run: echo "⚠️ No test setup yet, skipping"
+#        # Uncomment and replace with actual test command when ready
+#        # run: npm test
+#      - name: Create .env file from GitHub Secrets
+#        run: |
+#          echo "SALESFORCE_CLIENT_ID=${{ secrets.SALESFORCE_CLIENT_ID }}" >> $GITHUB_ENV
+#          echo "SALESFORCE_CLIENT_SECRET=${{ secrets.SALESFORCE_CLIENT_SECRET }}" >> $GITHUB_ENV
+#          echo "SALESFORCE_USERNAME=${{ secrets.SALESFORCE_USERNAME }}" >> $GITHUB_ENV
+#          echo "SALESFORCE_PASSWORD=${{ secrets.SALESFORCE_PASSWORD }}" >> $GITHUB_ENV
+#          echo "SALESFORCE_TOKEN=${{ secrets.SALESFORCE_TOKEN }}" >> $GITHUB_ENV
+#          echo "SALESFORCE_LOGIN_URL=${{ secrets.SALESFORCE_LOGIN_URL }}" >> $GITHUB_ENV
+#          echo "SALESFORCE_URL=${{ secrets.SALESFORCE_URL }}" >> $GITHUB_ENV
+#          echo "SALESFORCE_ACCESS_TOKEN=${{ secrets.SALESFORCE_ACCESS_TOKEN }}" >> $GITHUB_ENV
+#          echo "RABBITMQ_HOST=${{ secrets.RABBITMQ_HOST }}" >> $GITHUB_ENV
+#          echo "RABBITMQ_PORT=${{ secrets.RABBITMQ_PORT }}" >> $GITHUB_ENV
+#          echo "RABBITMQ_USERNAME=${{ secrets.RABBITMQ_USERNAME }}" >> $GITHUB_ENV
+#          echo "RABBITMQ_PASSWORD=${{ secrets.RABBITMQ_PASSWORD }}" >> $GITHUB_ENV
+#          echo "RABBITMQ_EXCHANGE_HEARTBEAT=${{ secrets.RABBITMQ_EXCHANGE_HEARTBEAT }}" >> $GITHUB_ENV
+#          echo "LOG_LEVEL=${{ secrets.LOG_LEVEL }}" >> $GITHUB_ENV
+#          echo "GENERAL_LOG_FILE=${{ secrets.GENERAL_LOG_FILE }}" >> $GITHUB_ENV
+#          echo "HEARTBEAT_LOG_FILE=${{ secrets.HEARTBEAT_LOG_FILE }}" >> $GITHUB_ENV
+#          echo "USER_LOG_FILE=${{ secrets.USER_LOG_FILE }}" >> $GITHUB_ENV
+#          echo "EVENT_LOG_FILE=${{ secrets.EVENT_LOG_FILE }}" >> $GITHUB_ENV
+#          echo "SESSION_LOG_FILE=${{ secrets.SESSION_LOG_FILE }}" >> $GITHUB_ENV
+#      - name: Test Docker Compose
+#        run: |
+#          docker compose up -d        # Fix: Use -d for detached mode
+#          sleep 10                    # Wait for containers to start
+#          docker ps                   # Verify running containers
+#          docker compose down         # Clean up
+
+  # Job to build and deploy the Docker image
+  deploy:
+    name: Deploy To Server
+#    needs: test
     runs-on: ubuntu-latest
+    environment: environment
+
     steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run tests
-        run: echo "⚠️ Nog geen test setup, overslaan"
-        # run: npm test
-
-  build-and-deploy:
-    needs: test
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
-      - name: Build Docker image
-        run: docker build -t crm-service:latest .
-
-      - name: Save Docker image as tarball
-        run: docker save crm-service:latest -o crm-service.tar
-
-      - name: Set up SSH agent
-        uses: webfactory/ssh-agent@v0.7.0
-        with:
-          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-
-      - name: Upload Docker image to server
+      - name: Install SSH Client and sshpass
         run: |
-          scp -P ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no crm-service.tar ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/tmp/crm-service.tar
+          sudo apt-get update && sudo apt-get install -y openssh-client sshpass
 
-      - name: Deploy Docker image on server
+      - name: Deploy to Server
+        env:
+          SSH_HOST: ${{ secrets.SERVER_HOST }}
+          SSH_USERNAME: ${{ secrets.SERVER_USERNAME }}
+          SSH_PASSWORD: ${{ secrets.SERVER_PASSWORD }}
+          SSH_PORT: ${{ secrets.SERVER_PORT }}
         run: |
-          ssh -p ${{ secrets.SSH_PORT }} -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
-          docker load -i /tmp/crm-service.tar
-          cd ~/crmV2
-          docker compose --env-file .env.production up -d --build
+          sshpass -p "$SSH_PASSWORD" ssh -o StrictHostKeyChecking=no -p "$SSH_PORT" "$SSH_USERNAME@$SSH_HOST" << 'EOF'
+            cd ~/crmV2
+            git checkout main
+            git pull origin main
+            docker compose pull crm-service
+            docker compose up -d --no-deps --build crm-service
+            docker image prune -f
           EOF
