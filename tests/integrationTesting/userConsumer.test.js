@@ -1,6 +1,6 @@
 // tests/userConsumer.test.js
 
-const StartUserConsumer = require('../consumers/UserConsumer');
+const StartUserConsumer = require('../../consumers/UserConsumer');
 
 // Mock dependencies
 const mockSalesforceClient = {
@@ -22,7 +22,7 @@ const mockChannel = {
     nack: jest.fn()
 };
 
-jest.mock('../utils/xmlJsonTranslator', () => ({
+jest.mock('../../utils/xmlJsonTranslator', () => ({
     xmlToJson: jest.fn(async (xml) => ({
         UserMessage: {
             UUID: 'uuid-123',
