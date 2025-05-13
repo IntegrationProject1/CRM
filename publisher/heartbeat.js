@@ -9,7 +9,7 @@ const {validateXml} = require('../utils/xmlValidator');
  * @returns {Promise<void>} Resolves when exchange is set and interval starts.
  */
 
-async function startHeartbeat(channel, exchangeName, serviceName = 'CRM_Service') {
+async function startHeartbeat(channel, exchangeName, routingkey, serviceName = 'CRM_Service') {
    await channel.assertExchange(exchangeName, 'direct', {durable: true});
 
    setInterval(() => {
