@@ -1,6 +1,6 @@
 // tests/CDChandler.test.js
 
-const ContactCDCHandler = require('../cdc/ContactCDCHandler');
+const ContactCDCHandler = require('../../cdc/ContactCDCHandler');
 
 // Mock dependencies
 const mockSfClient = {
@@ -21,10 +21,10 @@ const mockRMQChannel = {
 };
 
 // Mock utility modules
-jest.mock('../utils/xmlJsonTranslator', () => ({
+jest.mock('../../utils/xmlJsonTranslator', () => ({
     jsonToXml: jest.fn(() => '<UserMessage></UserMessage>')
 }));
-jest.mock('../utils/xmlValidator', () => ({
+jest.mock('../../utils/xmlValidator', () => ({
     validateXml: jest.fn(() => true)
 }));
 
