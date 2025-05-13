@@ -5,11 +5,12 @@ const {validateXml} = require('../utils/xmlValidator');
  * Starts sending periodic heartbeat messages to a RabbitMQ exchange.
  * @param {Object} channel - RabbitMQ channel to publish messages.
  * @param {string} exchangeName - Name of the exchange to publish to.
+ * @param routingKey
  * @param {string} [serviceName='CRM_Service'] - Service name (optional).
  * @returns {Promise<void>} Resolves when exchange is set and interval starts.
  */
 
-async function startHeartbeat(channel, exchangeName, routingkey, serviceName = 'CRM_Service') {
+async function startHeartbeat(channel, exchangeName, routingKey, serviceName = 'CRM_Service') {
    await channel.assertExchange(exchangeName, 'direct', {durable: true});
 
    setInterval(() => {

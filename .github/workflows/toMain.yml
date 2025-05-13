@@ -1,12 +1,17 @@
-name: validator for main
+name: Validator for Main or Development
 
 on:
   pull_request:
     branches:
       - main
+      - development
+  push:
+    branches:
+      - main
+      - development
 
 jobs:
-  test:
+  setup:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -21,5 +26,7 @@ jobs:
         run: npm ci
   
       - name: Run tests
-        run: echo "⚠️ Nog geen test setup, overslaan"
-        #run: npm test
+        run: |
+          echo "⚠️ No test setup, skipping"
+          # Uncomment the line below to run tests when ready
+          # npm test
