@@ -13,6 +13,6 @@ services:
 
 networks:
   rabbitmq_project_network:
-    external: false
+    external: true
 # false als je local werkt
 # True met de server

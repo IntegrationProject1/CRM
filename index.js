@@ -40,8 +40,9 @@ const startHeartbeat     = require('./publisher/heartbeat');
       });
 
       let heartBeatQueue = process.env.RABBITMQ_EXCHANGE_HEARTBEAT;
+      let heartBeatRoutingKey = process.env.RABBITMQ_ROUTING_KEY_HEARTBEAT;
 
-    startHeartbeat(channel, heartBeatQueue, 'CRM_Service');
+      startHeartbeat(channel, heartBeatQueue, heartBeatRoutingKey, 'CRM_Service');
 
    } catch (err) {
 
