@@ -11,7 +11,6 @@
                             <xs:element name="Field" maxOccurs="unbounded">
                                 <xs:complexType>
                                     <xs:sequence>
-                                        <xs:element name="Name" type="xs:string"/>
                                         <xs:element name="NewValue" type="xs:string"/>
                                     </xs:sequence>
                                 </xs:complexType>
