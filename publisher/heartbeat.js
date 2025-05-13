@@ -25,7 +25,7 @@ async function startHeartbeat(channel, exchangeName, serviceName = 'CRM_Service'
          return;
       }
 
-      channel.publish(exchangeName, '', Buffer.from(xml));
+      channel.publish(exchangeName, routingKey, Buffer.from(xml));
       // console.log('📡 Geldige Heartbeat verzonden:\n', xml);
    }, 1000); // 1000 = 1 seconde
 }
