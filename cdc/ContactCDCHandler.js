@@ -2,6 +2,7 @@ require('dotenv').config();
 const { jsonToXml } = require("../utils/xmlJsonTranslator");
 const validator = require("../utils/xmlValidator");
 const hrtimeBase = process.hrtime.bigint();
+const {user_logger} = require("../utils/logger");
 
 /**
  * Generates the current ISO 8601 timestamp with microsecond precision.
@@ -35,17 +36,20 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
    const { ChangeEventHeader, ...cdcObjectData } = message.payload;
 
    if (ChangeEventHeader.changeOrigin === "com/salesforce/api/rest/50.0") {
-      console.log("🚫 Salesforce API call gedetecteerd, actie overgeslagen.");
+      user_logger.info("Salesforce API call gedetecteerd, actie overgeslagen.");
+      // console.log("🚫 Salesforce API call gedetecteerd, actie overgeslagen.");
       return;
    }
 
    const action = ChangeEventHeader.changeType;
-   console.log('📥 Salesforce CDC Contact Event ontvangen:', action, cdcObjectData);
+   user_logger.info('Salesforce CDC Contact Event ontvangen:', action, cdcObjectData);
+   // console.log('📥 Salesforce CDC Contact Event ontvangen:', action, cdcObjectData);
 
    let recordId;
    if (['CREATE', 'UPDATE', 'DELETE'].includes(action)) {
       recordId = ChangeEventHeader.recordIds?.[0];
-      if (!recordId) return console.error('❌ Geen recordId gevonden.');
+      // if (!recordId) return console.error('❌ Geen recordId gevonden.');
+      if (!recordId) return user_logger.error('Geen recordId gevonden.');
    }
 
    let UUID;
@@ -58,7 +62,8 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
          case 'CREATE':
             UUID = generateMicroDateTime();
             await sfClient.updateUser(recordId, { UUID__c: UUID });
-            console.log("✅ UUID succesvol bijgewerkt:", UUID);
+            user_logger.info('UUID succesvol bijgewerkt:', UUID);
+            // console.log("✅ UUID succesvol bijgewerkt:", UUID);
 
             JSONMsg = {
                UserMessage: {
@@ -121,7 +126,8 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
             break;
 
          default:
-            console.warn("⚠️ Niet gehandelde actie:", action);
+            user_logger.warning("⚠️ Niet gehandelde actie:", action);
+            // console.warn("⚠️ Niet gehandelde actie:", action);
             return;
       }
 
@@ -140,14 +146,18 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
       ];
 
       for (const routingKey of routingKeys) {
+         user_logger.debug('Debugging exchangeName and routingKey:', exchangeName, routingKey);
          RMQChannel.publish(exchangeName, routingKey, Buffer.from(xmlMessage));
-         console.log(`📤 Bericht verstuurd naar ${exchangeName} (${routingKey})`);
+         user_logger.info('Bericht verstuurd naar:', exchangeName, routingKey);
+         // console.log(`📤 Bericht verstuurd naar ${exchangeName} (${routingKey})`);
       }
 
    } catch (error) {
-      console.error(`❌ Kritieke fout tijdens ${action} actie:`, error.message);
+      user_logger.error(`❌ Kritieke fout tijdens ${action} actie:`, error.message);
+      // console.error(`❌ Kritieke fout tijdens ${action} actie:`, error.message);
       if (error.response?.body) {
-         console.error('Salesforce API fout details:', error.response.body);
+         // console.error('Salesforce API fout details:', error.response.body);
+         user_logger.error('Salesforce API fout details:', error.response.body);
       }
    }
 };

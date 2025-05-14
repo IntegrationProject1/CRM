@@ -154,7 +154,6 @@ const session_logger = wrapLoggerWithStatusCode(
 const logger_logger = wrapLoggerWithStatusCode(
     createLogger('logger', process.env.LOG_LEVEL, process.env.LOGGER_LOG_FILE)
 );
-
 // general_logger.info('Logger initialized', "200");
 //
 // general_logger.error('Logger error', "500");
