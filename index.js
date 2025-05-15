@@ -1,6 +1,7 @@
 require('dotenv').config();
 const amqp = require('amqplib');
 const ContactCDCHandler = require('./cdc/ContactCDCHandler');
+const EventCDCHandler = require('./cdc/EventCDCHandler');
 const SalesforceClient   = require('./salesforceClient');
 const StartUserConsumer = require('./consumers/UserConsumer');
 const startHeartbeat     = require('./publisher/heartbeat');
@@ -48,6 +49,9 @@ const {general_logger} = require("./utils/logger");
       cdcClient.subscribe('/data/ContactChangeEvent', async function (message) {
          await ContactCDCHandler(message, sfClient, channel);
       });
+      cdcClient.subscribe('/data/Event__ChangeEvent', async function (message) {
+         await EventCDCHandler(message, sfClient, channel);
+      });
 
       let heartBeatQueue = process.env.RABBITMQ_EXCHANGE_HEARTBEAT;
       general_logger.debug(heartBeatQueue);
@@ -56,7 +60,7 @@ const {general_logger} = require("./utils/logger");
 
       // ─── 5️⃣ Start de heartbeat publisher ──────────────────────────────
       general_logger.info('Start de heartbeat publisher');
-      startHeartbeat(channel, heartBeatQueue, heartBeatRoutingKey, 'CRM_Service');
+      await startHeartbeat(channel, heartBeatQueue, heartBeatRoutingKey, 'CRM_Service');
 
    } catch (err) {
       general_logger.error('Fout bij opstarten:', err.response?.data || err.message);
