@@ -4,6 +4,7 @@
  */
 
 const xmlJsonTranslator = require("../utils/xmlJsonTranslator");
+const {user_logger} = require("../utils/logger");
 
 /**
  * Start de UserConsumer om berichten van RabbitMQ-queues te verwerken.
@@ -22,7 +23,9 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
          if (!msg) return;
 
          const content = msg.content.toString();
-         console.log(`📥 [${action}UserConsumer] Ontvangen`);
+         // console.log(`📥 [${action}UserConsumer] Ontvangen`);
+         user_logger.info(`[${action}UserConsumer] Ontvangen`, content);
+
 
          // convert XML to JSON
          let jsonConv;
@@ -30,13 +33,15 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
             jsonConv = await xmlJsonTranslator.xmlToJson(content);
          } catch (e) {
             channel.nack(msg, false, false);
-            console.error('❌ Ongeldig XML formaat:', content);
+            // console.error('❌ Ongeldig XML formaat:', content);
+            user_logger.error('Ongeldig XML formaat:', content);
             return;
          }
 
          if (!jsonConv.UserMessage) {
             channel.nack(msg, false, false);
-            console.error("❌ Ongeldig formaat:", jsonConv);
+            // console.error("❌ Ongeldig formaat:", jsonConv);
+            user_logger.error("Ongeldig formaat:", jsonConv);
             return;
          }
          const objectData = jsonConv.UserMessage;
@@ -55,13 +60,15 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
                result = await query.run();
             } catch (err) {
                channel.nack(msg, false, false);
-               console.error("❌ Fout bij ophalen Salesforce ID:", err.message);
+               // console.error("❌ Fout bij ophalen Salesforce ID:", err.message);
+               user_logger.error("Fout bij ophalen Salesforce ID:", err.message);
                return;
             }
 
             if (!result || result.length === 0) {
                channel.nack(msg, false, false);
-               console.error("❌ Geen Salesforce ID gevonden voor UUID:", objectData.UUID);
+               // console.error("❌ Geen Salesforce ID gevonden voor UUID:", objectData.UUID);
+               user_logger.error("Geen Salesforce ID gevonden voor UUID:", objectData.UUID);
                return;
             }
             SalesforceObjId = result[0].Id;
@@ -96,10 +103,12 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
                   };
 
                   await salesforceClient.createUser(JSONMsg);
-                  console.log("✅ Gebruiker aangemaakt in Salesforce");
+                  // console.log("✅ Gebruiker aangemaakt in Salesforce");
+                  user_logger.info("Gebruiker aangemaakt in Salesforce");
                } catch (err) {
                   channel.nack(msg, false, false);
-                  console.error("❌ Fout bij create:", err.message);
+                  // console.error("❌ Fout bij create:", err.message);
+                  user_logger.error("Fout bij create:", err.message);
                   return;
                }
                break;
@@ -116,10 +125,12 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
                   };
 
                   await salesforceClient.updateUser(SalesforceObjId, JSONMsg);
-                  console.log("✅ Gebruiker geüpdatet in Salesforce");
+                  // console.log("✅ Gebruiker geüpdatet in Salesforce");
+                  user_logger.info("Gebruiker geüpdatet in Salesforce");
                } catch (err) {
                   channel.nack(msg, false, false);
-                  console.error("❌ Fout bij update:", err.message);
+                  // console.error("❌ Fout bij update:", err.message);
+                  user_logger.error("Fout bij update:", err.message);
                   return;
                }
                break;
@@ -127,23 +138,27 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
             case "delete":
                try {
                   await salesforceClient.deleteUser(SalesforceObjId);
-                  console.log("✅ Gebruiker verwijderd uit Salesforce");
+                  // console.log("✅ Gebruiker verwijderd uit Salesforce");
+                  user_logger.info("Gebruiker verwijderd uit Salesforce");
                } catch (err) {
                   channel.nack(msg, false, false);
-                  console.error("❌ Fout bij delete:", err.message);
+                  // console.error("❌ Fout bij delete:", err.message);
+                  user_logger.error("Fout bij delete:", err.message);
                   return;
                }
                break;
 
             default:
                channel.nack(msg, false, false);
-               console.error(`❌ Ongeldige queue: ${action}`);
+               // console.error(`❌ Ongeldige queue: ${action}`);
+               user_logger.error(`Ongeldige queue: ${action}`);
                return;
          }
 
          await channel.ack(msg);
       });
 
-      console.log(`🔔 Listening for messages on queue "crm_user_${action}"…`);
+      // console.log(`🔔 Listening for messages on queue "crm_user_${action}"…`);
+      user_logger.info(`Listening for messages on queue "crm_user_${action}"…`);
    }
 };

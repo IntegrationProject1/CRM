@@ -1,5 +1,6 @@
 const path = require('path');
 const {validateXml} = require('../utils/xmlValidator');
+const {logger_logger} = require("../utils/logger");
 
 /**
  * Starts sending periodic heartbeat messages to a RabbitMQ exchange.
@@ -22,7 +23,8 @@ async function startHeartbeat(channel, exchangeName, routingKey, serviceName = '
       const xsdPath = path.join(__dirname, '../xsd/heartbeatXSD/heartbeat.xsd');
 
       if (!validateXml(xml, xsdPath)) {
-         console.error('❌ Heartbeat XML is niet geldig tegen XSD. Bericht NIET verzonden.');
+         // console.error('❌ Heartbeat XML is niet geldig tegen XSD. Bericht NIET verzonden.');
+         logger_logger.error('❌ Heartbeat XML is niet geldig tegen XSD. Bericht NIET verzonden.');
          return;
       }
 
