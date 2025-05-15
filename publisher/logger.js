@@ -3,6 +3,7 @@ const amqp = require('amqplib');
 
 const {validateXml} = require('../utils/xmlValidator');
 const {logger_logger} = require('../utils/logger');
+const {info} = require("amqplib/lib/defs");
 
 /**
  * Sending messages to a RabbitMQ log exchange.
@@ -44,8 +45,8 @@ async function sendLog(channel, exchangeName, serviceName = 'CRM_Service', statu
         return;
     }
 
-    channel.publish(exchangeName, '', Buffer.from(xml));
-    logger_logger.info('Sending message', channel, exchangeName, serviceName, status_level);
+    channel.publish(exchangeName, 'controlroom.log.test', Buffer.from(xml));
+    logger_logger.trace('Sending message', channel, exchangeName, serviceName, status_level);
 }
 
 /**
@@ -74,5 +75,5 @@ async function sendMessage(exchangeName, status_level, code, message) {
         logger_logger.error(error);
     }
 }
-
+sendMessage('log_monitoring', 'info', '200', 'Heartbeat message');
 module.exports = sendMessage;

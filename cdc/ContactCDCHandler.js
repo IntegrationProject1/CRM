@@ -83,7 +83,9 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
          case 'UPDATE':
             const updatedRecord = await sfClient.sObject('Contact').retrieve(recordId);
             if (!updatedRecord?.UUID__c) {
-               throw new Error(`Geen UUID gevonden voor record: ${recordId}`);
+               // throw new Error(`Geen UUID gevonden voor record: ${recordId}`);
+                user_logger.error(`Geen UUID gevonden voor record: ${recordId}`);
+                return;
             }
 
             JSONMsg = {
@@ -112,7 +114,9 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
             const deletedRecord = resultDel[0];
 
             if (!deletedRecord?.UUID__c) {
-               throw new Error(`Geen UUID gevonden voor verwijderd record: ${recordId}`);
+               // throw new Error(`Geen UUID gevonden voor verwijderd record: ${recordId}`);
+             user_logger.error(`Geen UUID gevonden voor verwijderd record: ${recordId}`);
+             return;
             }
 
             JSONMsg = {
@@ -126,14 +130,16 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
             break;
 
          default:
-            user_logger.warning("⚠️ Niet gehandelde actie:", action);
+            user_logger.warning(" Niet gehandelde actie:", action);
             // console.warn("⚠️ Niet gehandelde actie:", action);
             return;
       }
 
       xmlMessage = jsonToXml(JSONMsg.UserMessage, { rootName: 'UserMessage' });
       if (!validator.validateXml(xmlMessage, xsdPath)) {
-         throw new Error(`XML validatie gefaald voor actie: ${action}`);
+         // throw new Error(`XML validatie gefaald voor actie: ${action}`);
+         user_logger.error('XML validatie gefaald voor actie:', action);
+         return;
       }
 
       const exchangeName = 'user';
