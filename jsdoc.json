@@ -1,10 +1,42 @@
 {
   "source": {
-    "include": ["README.md","."],
-    "exclude": ["node_modules", "dist"]
+    "include": ["README.md", "."],
+    "exclude": ["node_modules", "dist", "docs/scripts/third-party"]
   },
+  "plugins": ["plugins/markdown"],
   "opts": {
     "destination": "./docs/",
-    "recurse": true
+    "recurse": true,
+    "readme": "./README.md",
+    "template": "node_modules/clean-jsdoc-theme",
+    "theme_opts": {
+      "menu": [
+        {
+          "title": "Home",
+          "link": "./index.html"
+        },
+        {
+          "title": "GitHub",
+          "link": "https://github.com/IntegrationProject1/CRM"
+        },
+        {
+          "title": "Wiki",
+          "link": "https://github.com/IntegrationProject1/CRM/wiki"
+        }
+      ],
+      "sections":
+              [
+                "Modules",
+                "Classes",
+                "Global"
+              ],
+      "homepageTitle": "CRM Microservice Documentation",
+      "includeFilesListInHomepage": true,
+      "default_theme": "dark"
+    }
+  },
+  "markdown": {
+    "hardwrap": false,
+    "idInHeadings": true
   }
 }

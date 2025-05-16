@@ -13,7 +13,7 @@ The CRM Microservice is responsible for managing customer relationship data by i
 
 1. Clone the repository:
    ```bash
-   git clone <repository-url>
+   git clone "https://github.com/IntegrationProject1/CRM.git"
    cd CRM
     ```
 2. Install dependencies:
@@ -75,25 +75,25 @@ The CRM Microservice is responsible for managing customer relationship data by i
    Open `docs/index.html` in your web browser.
 
 ## Project Structure
-- 'index.js' - Entry point for the microservice.
-- 'package.json' - Contains project metadata and dependencies.
-- 'package-lock.json' - Contains the exact versions of dependencies.
-- '.env' - Environment variables for configuration.
-- '.gitignore' - Specifies files to ignore in version control.
-- 'jsdoc.json' - Configuration for JSDoc documentation generation.
-- 'docker-compose.yml' - Docker Compose file for container orchestration.
-- 'docker-compose.rabbitmq.yml' - Docker Compose file for RabbitMQ setup.
-- 'dockerfile' - Dockerfile for building the microservice image.
-- 'README.md' - Project documentation.
-- '.github/' - Contains GitHub Actions workflows.
-- 'docs/' - Contains generated documentation.
-- 'logs/' - Contains log files.
-- 'tests/' - Contains unit and integration tests.
-- 'cdc/' - Contains Change Data Capture (CDC) listeners.
-- 'consumers/' - Contains consumers for RabbitMQ.
-- 'publishers/' - Contains publishers for RabbitMQ.
-- 'utils/' - Contains utility functions and helpers.
-- 'xsd/' - Contains XML Schema Definitions (XSD) for data validation.
+- `index.js` - Entry point for the microservice.
+- `package.json` - Contains project metadata and dependencies.
+- `package-lock.json` - Contains the exact versions of dependencies.
+- `.env` - Environment variables for configuration.
+- `.gitignore` - Specifies files to ignore in version control.
+- `jsdoc.json` - Configuration for JSDoc documentation generation.
+- `docker-compose.yml` - Docker Compose file for container orchestration.
+- `docker-compose.rabbitmq.yml` - Docker Compose file for RabbitMQ setup.
+- `dockerfile` - Dockerfile for building the microservice image.
+- `README.md` - Project documentation.
+- `.github/` - Contains GitHub Actions workflows.
+- `docs/` - Contains generated documentation.
+- `logs/` - Contains log files.
+- `tests/` - Contains unit and integration tests.
+- `cdc/` - Contains Change Data Capture (CDC) listeners.
+- `consumers/` - Contains consumers for RabbitMQ.
+- `publishers/` - Contains publishers for RabbitMQ.
+- `utils/` - Contains utility functions and helpers.
+- `xsd/` - Contains XML Schema Definitions (XSD) for data validation.
 
 # authors:
 - [Lars]()

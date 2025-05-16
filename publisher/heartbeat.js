@@ -1,3 +1,8 @@
+/**
+ * @module heartbeat
+ * @file publisher/heartbeat.js
+ * @type {path.PlatformPath | path}
+ */
 const path = require('path');
 const {validateXml} = require('../utils/xmlValidator');
 const {logger_logger} = require("../utils/logger");
