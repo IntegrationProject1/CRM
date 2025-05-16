@@ -1,8 +1,8 @@
 require('dotenv').config();
-const { jsonToXml } = require("./utils/xmlJsonTranslator");
-const validator = require("./utils/xmlValidator");
+const { jsonToXml } = require("../utils/xmlJsonTranslator");
+const validator = require("../utils/xmlValidator");
 const hrtimeBase = process.hrtime.bigint();
-const {user_logger} = require("./utils/logger");
+const {user_logger} = require("../utils/logger");
 
 /**
  * Generates an ISO 8601 timestamp with 6 digits for fractional seconds (microseconds).
