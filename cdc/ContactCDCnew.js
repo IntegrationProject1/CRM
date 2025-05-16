@@ -151,7 +151,7 @@ async function handleDeleteAction(recordId, sfClient) {
  * @param RMQChannel - RabbitMQ channel instance.
  * @param action - The action type (CREATE, UPDATE, DELETE).
  * @param xmlMessage - The XML message to be published.
- * @returns {Promise<Awaited<void>[]>} - Array of promises for each published message.
+ * @returns {Promise<void[]>} - Array of promises for each published message.
  */
 function publishToExchanges(RMQChannel, action, xmlMessage) {
     const exchangeName = 'user';
