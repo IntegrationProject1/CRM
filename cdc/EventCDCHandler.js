@@ -26,21 +26,16 @@ function generateMicroDateTime() {
  * @returns {Promise<void>}
  */
 module.exports = async function EventCDCHandler(message, sfClient, RMQChannel) {
-   const { ChangeEventHeader, ...cdcObjectData } = message.payload;
+   const { ChangeEventHeader, ...cdcObject } = message.payload;
 
    if (ChangeEventHeader.changeOrigin === "com/salesforce/api/rest/50.0") {
       console.log("🚫 Salesforce API call detected, skipping action.");
       return;
    }
 
-   {
-      console.log("Event Object Captured: ", { header: ChangeEventHeader, changes: cdcObjectData });
-   }
-   return;
-
+   console.log("Captured Event Object: ", { header: ChangeEventHeader, changes: cdcObject });
 
    const action = ChangeEventHeader.changeType;
-   console.log('📥 Salesforce CDC Event object received:', { action, cdcObjectData } );
 
    let recordId;
    if (['CREATE', 'UPDATE', 'DELETE'].includes(action)) {
@@ -57,22 +52,23 @@ module.exports = async function EventCDCHandler(message, sfClient, RMQChannel) {
       switch (action) {
          case 'CREATE':
             UUID = generateMicroDateTime();
+            console.log('recordid:', recordId);
             await sfClient.sObject('Event__c')
-               .update(recordId, { UUID__c: UUID });
+               .update({Id: recordId, UUID__c: UUID });
             console.log("✅ UUID successfully updated:", UUID);
 
             JSONMsg = {
                CreateEvent: {
                   UUID: UUID,
-                  Name: cdcObjectData.Name || "",
-                  Description: cdcObjectData.Description__c || "",
-                  StartDateTime: cdcObjectData.StartDateTime__c || "",
-                  EndDateTime: cdcObjectData.EndDateTime__c || "",
-                  Location: cdcObjectData.Location__c || "",
-                  Organisator: cdcObjectData.Organiser__c || "",
-                  Capacity: cdcObjectData.GuestSpeaker__c || 0,
-                  EventType: cdcObjectData.EventType__c || "",
-                  RegisteredUsers: cdcObjectData.RegisteredUsers || { User: [] }
+                  Name: cdcObject.Name,
+                  Description: cdcObject.Description__c,
+                  StartDateTime: cdcObject.StartDateTime__c,
+                  EndDateTime: cdcObject.EndDateTime__c,
+                  Location: cdcObject.Location__c,
+                  Organisator: cdcObject.Organiser__c,
+                  Capacity: cdcObject.GuestSpeaker__c,
+                  EventType: cdcObject.EventType__c,
+                  RegisteredUsers: cdcObject.RegisteredUsers || { User: [] }
                }
             };
             xsdPath = './xsd/eventsXSD/CreateEvent.xsd';
@@ -86,17 +82,19 @@ module.exports = async function EventCDCHandler(message, sfClient, RMQChannel) {
             }
 
             JSONMsg = {
-               CreateEvent: {
+               UpdateEvent: {
                   UUID: updatedRecord.UUID__c,
-                  Name: updatedRecord.Name,
-                  Description: updatedRecord.Description__c,
-                  StartDateTime: updatedRecord.StartDateTime__c,
-                  EndDateTime: updatedRecord.EndDateTime__c,
-                  Location: updatedRecord.Location__c,
-                  Organisator: updatedRecord.Organiser__c,
-                  Capacity: updatedRecord.GuestSpeaker__c,
-                  EventType: updatedRecord.EventType__c,
-                  RegisteredUsers: updatedRecord.RegisteredUsers || { User: [] }
+                  FieldsToUpdate: {
+                     ...(cdcObject.Name && { Name: cdcObject.Name }),
+                     ...(cdcObject.Description__c && { Description: cdcObject.Description__c }),
+                     ...(cdcObject.StartDateTime__c && { StartDateTime: cdcObject.StartDateTime__c }),
+                     ...(cdcObject.EndDateTime__c && { EndDateTime: cdcObject.EndDateTime__c }),
+                     ...(cdcObject.Location__c && { Location: cdcObject.Location__c }),
+                     ...(cdcObject.Organiser__c && { Organisator: cdcObject.Organiser__c }),
+                     ...(cdcObject.GuestSpeaker__c && { Capacity: cdcObject.GuestSpeaker__c }),
+                     ...(cdcObject.EventType__c && { EventType: cdcObject.EventType__c }),
+                     ...(cdcObject.RegisteredUsers && { RegisteredUsers: cdcObject.RegisteredUsers || { User: [] } })
+                  }
                }
             };
             xsdPath = './xsd/eventsXSD/UpdateEvent.xsd';
@@ -117,7 +115,7 @@ module.exports = async function EventCDCHandler(message, sfClient, RMQChannel) {
             }
 
             JSONMsg = {
-               CreateEvent: {
+               DeleteEvent: {
                   UUID: deletedRecord.UUID__c,
                   RegisteredUsers: { User: [] }
                }
@@ -130,10 +128,16 @@ module.exports = async function EventCDCHandler(message, sfClient, RMQChannel) {
             return;
       }
 
-      xmlMessage = jsonToXml(JSONMsg.CreateEvent, { rootName: 'CreateEvent' });
+      console.log("json result:", JSONMsg)
+
+      xmlMessage = jsonToXml(JSONMsg);
+      console.log("xml result:", xmlMessage)
+
       if (!validator.validateXml(xmlMessage, xsdPath)) {
          throw new Error(`XML validation failed for action: ${action}`);
       }
+
+         return console.log("XML Validation passed successfully");
 
       const exchangeName = 'event';
       await RMQChannel.assertExchange(exchangeName, 'topic', { durable: true });
