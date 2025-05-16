@@ -1,9 +1,17 @@
+/**
+ * @module logger
+ * @description Publishes log messages to a RabbitMQ exchange.
+ * @requires path
+ * @requires amqplib
+ * @requires ../utils/xmlValidator
+ * @requires ../utils/logger
+ */
+
 const path = require('path');
 const amqp = require('amqplib');
 
 const {validateXml} = require('../utils/xmlValidator');
 const {logger_logger} = require('../utils/logger');
-const {info} = require("amqplib/lib/defs");
 
 /**
  * Sending messages to a RabbitMQ log exchange.

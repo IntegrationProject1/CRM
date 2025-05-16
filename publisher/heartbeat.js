@@ -1,8 +1,11 @@
 /**
  * @module heartbeat
- * @file publisher/heartbeat.js
- * @type {path.PlatformPath | path}
+ * @description Publishes heartbeat messages to a RabbitMQ exchange.
+ * @requires path
+ * @requires ../utils/xmlValidator
+ * @requires ../utils/logger
  */
+
 const path = require('path');
 const {validateXml} = require('../utils/xmlValidator');
 const {logger_logger} = require("../utils/logger");
@@ -14,6 +17,8 @@ const {logger_logger} = require("../utils/logger");
  * @param {string} [routingKey=''] - Routing key for the message (optional).
  * @param {string} [serviceName='CRM_Service'] - Service name (optional).
  * @returns {Promise<void>} Resolves when exchange is set and interval starts.
+ * @example
+ * startHeartbeat(channel, 'heartbeatExchange', 'heartbeat.routing.key', 'CRM_Service');
  */
 async function startHeartbeat(channel, exchangeName, routingKey, serviceName = 'CRM_Service') {
    await channel.assertExchange(exchangeName, 'direct', {durable: true});

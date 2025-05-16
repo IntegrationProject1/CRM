@@ -1,3 +1,14 @@
+/**
+ * @module ContactCDC
+ * @file cdc/ContactCDCHandler.js
+ * @description Publishes Salesforce CDC messages to RabbitMQ exchanges.
+ * @requires dotenv
+ * @requires ../utils/xmlJsonTranslator
+ * @requires ../utils/xmlValidator
+ * @requires process.hrtime.bigint
+ * @requires ../utils/logger
+ */
+
 require('dotenv').config();
 const { jsonToXml } = require("../utils/xmlJsonTranslator");
 const validator = require("../utils/xmlValidator");

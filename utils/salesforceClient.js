@@ -1,6 +1,8 @@
 /**
   * @module SalesforceClient
   * @description Beheert de verbinding met Salesforce en biedt methoden voor CRUD-operaties op Salesforce-objecten.
+  * @requires jsforce
+  * @requires ./logger
   */
 
  const jsforce = require('jsforce');

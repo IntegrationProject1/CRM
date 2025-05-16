@@ -1,4 +1,10 @@
-// tests/userConsumer.test.js
+/**
+ * @module tests/userConsumer.test
+ * @description Integration tests for the UserConsumer module.
+ * @requires ../consumers/UserConsumer
+ * @requires ../utils/xmlJsonTranslator
+ * @requires jest
+ */
 
 const StartUserConsumer = require('../consumers/UserConsumer');
 

@@ -82,7 +82,7 @@ The CRM Microservice is responsible for managing customer relationship data by i
 - `.gitignore` - Specifies files to ignore in version control.
 - `jsdoc.json` - Configuration for JSDoc documentation generation.
 - `docker-compose.yml` - Docker Compose file for container orchestration.
-- `docker-compose.rabbitmq.yml` - Docker Compose file for RabbitMQ setup.
+- `docker-compose.rabbitmq.yml` - Docker Compose file for RabbitMQ setup. (if you don't have RabbitMQ running)
 - `dockerfile` - Dockerfile for building the microservice image.
 - `README.md` - Project documentation.
 - `.github/` - Contains GitHub Actions workflows.

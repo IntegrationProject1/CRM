@@ -1,5 +1,9 @@
 /**
- * Logger module for CRM Service
+ * @module logger
+ * @description Logger module for different services.
+ * @requires dotenv
+ * @requires pino
+ * @requires pino-pretty
  */
 
 

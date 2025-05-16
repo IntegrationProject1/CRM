@@ -1,4 +1,11 @@
-// tests/CDChandler.test.js
+/**
+ * @module tests/CDChandler.test
+ * @description Integration tests for the ContactCDCHandler module.
+ * @requires ../cdc/ContactCDCHandler
+ * @requires ../utils/xmlJsonTranslator
+ * @requires ../utils/xmlValidator
+ * @requires jest
+ */
 
 const ContactCDCHandler = require('../cdc/ContactCDCHandler');
 

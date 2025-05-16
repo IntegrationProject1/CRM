@@ -1,7 +1,7 @@
 {
   "source": {
     "include": ["README.md", "."],
-    "exclude": ["node_modules", "dist", "docs/scripts/third-party"]
+    "exclude": ["node_modules", "dist", "docs"]
   },
   "plugins": ["plugins/markdown"],
   "opts": {

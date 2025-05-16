@@ -1,19 +1,30 @@
-// /**
-//  * @module UserConsumer
-//  * @description Beheert de verwerking van berichten uit RabbitMQ-queues voor het aanmaken, bijwerken en verwijderen van gebruikers in Salesforce.
-//  */
+/**
+ * @module UserConsumer
+ * @file consumers/UserConsumer.js
+ * @description Processes user-related messages from RabbitMQ and interacts with Salesforce.
+ * @requires ../utils/xmlJsonTranslator
+ * @requires ../utils/logger
+ */
 
 const xmlJsonTranslator = require("../utils/xmlJsonTranslator");
 const {user_logger} = require("../utils/logger");
 
-// /**
-//  * Start de UserConsumer om berichten van RabbitMQ-queues te verwerken.
-//  * @param {Object} channel - Het RabbitMQ-kanaal voor het consumeren van berichten.
-//  * @param {Object} salesforceClient - De Salesforce-client voor interactie met Salesforce.
-//  * @returns {Promise<void>} - Een belofte die wordt vervuld wanneer de consumer is gestart.
-//  */
+/**
+ * Initializes and starts the UserConsumer to process messages from RabbitMQ queues.
+ * Handles create, update, and delete actions for users in Salesforce.
+ *
+ * @async
+ * @function
+ * @param {Object} channel - The RabbitMQ channel for consuming messages.
+ * @param {Object} salesforceClient - The Salesforce client for interacting with Salesforce.
+ * @returns {Promise<void>} Resolves when the consumer is started.
+ */
 module.exports = async function StartUserConsumer(channel, salesforceClient) {
 
+   /**
+    * List of user actions to listen for.
+    * @type {string[]}
+    */
    const queues = ["create", "update", "delete"];
 
    for (const action of queues) {
@@ -22,12 +33,19 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
       await channel.consume(`crm_user_${action}`, async (msg) => {
          if (!msg) return;
 
+         /**
+          * The message content as a string.
+          * @type {string}
+          */
          const content = msg.content.toString();
          // console.log(`📥 [${action}UserConsumer] Ontvangen`);
          user_logger.info(`[${action}UserConsumer] Ontvangen`, content);
 
-
          // convert XML to JSON
+         /**
+          * The parsed JSON object from the XML message.
+          * @type {Object}
+          */
          let jsonConv;
          try {
             jsonConv = await xmlJsonTranslator.xmlToJson(content);
@@ -44,16 +62,23 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
             user_logger.error("Ongeldig formaat:", jsonConv);
             return;
          }
+         /**
+          * The user data extracted from the message.
+          * @type {Object}
+          */
          const objectData = jsonConv.UserMessage;
 
+         /**
+          * Salesforce Contact object ID, if applicable.
+          * @type {string|undefined}
+          */
          let SalesforceObjId;
          if (['update', 'delete'].includes(action)) { // Salesforce object ID ophalen (op basis van UUID) voor update/delete
             // retrieve Salesforce ID from UUID
             const query = salesforceClient.sObject("Contact")
-               .select("Id")
-               .where({ UUID__c: objectData.UUID })
-               .limit(1);
-
+                .select("Id")
+                .where({ UUID__c: objectData.UUID })
+                .limit(1);
 
             let result;
             try {
@@ -80,6 +105,10 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
             return;
          }
 
+         /**
+          * The payload to send to Salesforce.
+          * @type {Object}
+          */
          let JSONMsg;
 
          switch (action) {
