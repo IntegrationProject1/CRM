@@ -5,14 +5,8 @@ const hrtimeBase = process.hrtime.bigint();
 const {user_logger} = require("../utils/logger");
 
 /**
- * Generates the current ISO 8601 timestamp with microsecond precision.
- * @returns {string} ISO 8601 date-time string with microseconds.
- * @example
- * generateIsoMicroTimestamp();
- * // "2025-05-07T17:14:29.480652Z"
- * @description
- * Combines `Date.now()` milliseconds with `process.hrtime()` nanoseconds
- * to create a unique timestamp with microsecond precision.
+ * Generates a microsecond timestamp in ISO 8601 format.
+ * @returns {string}
  */
 function generateMicroDateTime() {
    const diffNs = process.hrtime.bigint() - hrtimeBase;
@@ -60,7 +54,7 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
    try {
       switch (action) {
          case 'CREATE':
-            UUID = generateMicroDateTime();
+            UUID = generateMicroDateTime().toString();
             await sfClient.updateUser(recordId, { UUID__c: UUID });
             user_logger.info('UUID succesvol bijgewerkt:', UUID);
             // console.log("✅ UUID succesvol bijgewerkt:", UUID);

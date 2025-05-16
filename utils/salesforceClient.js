@@ -76,4 +76,4 @@
     }
  }
 
- module.exports = SalesforceClient;
+ module.exports = { SalesforceClient };

@@ -19,68 +19,79 @@ const StartUserConsumer = require('./consumers/UserConsumer');
 const ContactCDCHandler = require('./cdc/ContactCDCHandler');
 
 /**
-  * Establishes a connection to RabbitMQ.
-  * @async
-  * @returns {Promise<Channel>} The RabbitMQ channel instance.
-  */
- async function connectToRabbitMQ() {
-     const conn = await connect({
-         protocol: 'amqp',
-         hostname: process.env.RABBITMQ_HOST,
-         port: process.env.RABBITMQ_PORT,
-         username: process.env.RABBITMQ_USERNAME,
-         password: process.env.RABBITMQ_PASSWORD,
-         vhost: '/'
-     });
-     return await conn.createChannel();
- }
+* Establishes a connection to RabbitMQ.
+* @async
+* @returns {Promise<Channel>} The RabbitMQ channel instance.
+*/
+async function connectToRabbitMQ() {
+ const conn = await connect({
+     protocol: 'amqp',
+     hostname: process.env.RABBITMQ_HOST,
+     port: process.env.RABBITMQ_PORT,
+     username: process.env.RABBITMQ_USERNAME,
+     password: process.env.RABBITMQ_PASSWORD,
+     vhost: '/'
+ });
+ return await conn.createChannel();
+}
 
- /**
-  * Logs in to Salesforce and returns the client instance.
-  * @async
-  * @returns {Promise<SalesforceClient>} The Salesforce client instance.
-  */
- async function loginToSalesforce() {
-     const sfClient = new SalesforceClient(
-         process.env.SALESFORCE_USERNAME,
-         process.env.SALESFORCE_PASSWORD,
-         process.env.SALESFORCE_TOKEN,
-         process.env.SALESFORCE_LOGIN_URL
-     );
-     await sfClient.login();
-     return sfClient;
- }
+/**
+* Logs in to Salesforce and returns the client instance.
+* @async
+* @returns {Promise<SalesforceClient>} The Salesforce client instance.
+*/
+async function loginToSalesforce() {
+ const sfClient = new SalesforceClient(
+     process.env.SALESFORCE_USERNAME,
+     process.env.SALESFORCE_PASSWORD,
+     process.env.SALESFORCE_TOKEN,
+     process.env.SALESFORCE_LOGIN_URL
+ );
+ await sfClient.login();
+ return sfClient;
+}
 
- /**
-  * Starts the CDC listeners for Salesforce.
-  * @param {SalesforceClient} sfClient - The Salesforce client instance.
-  * @param {Channel} channel - The RabbitMQ channel instance.
-  */
- function startCDCListeners(sfClient, channel) {
-     const cdcClient = sfClient.createCDCClient();
-     cdcClient.subscribe('/data/ContactChangeEvent', async (message) => {
-         await ContactCDCHandler(message, sfClient, channel);
-     });
- }
+/**
+* Starts the CDC listeners for Salesforce.
+* @param {SalesforceClient} sfClient - The Salesforce client instance.
+* @param {Channel} channel - The RabbitMQ channel instance.
+*/
+function startCDCListeners(sfClient, channel) {
+ const cdcClient = sfClient.createCDCClient();
+ cdcClient.subscribe('/data/ContactChangeEvent', async (message) => {
+     await ContactCDCHandler(message, sfClient, channel);
+ });
+}
 
- /**
-  * Starts the CRM service.
-  * @async
-  * @returns {Promise<void>}
-  */
- async function startCRMService() {
-     try {
-         const channel = await connectToRabbitMQ();
-         general_logger.info('Connected to RabbitMQ');
-
-         const sfClient = await loginToSalesforce();
-         general_logger.info('Logged in to Salesforce');
-
-         await StartUserConsumer(channel, sfClient);
-         general_logger.info('Started consumers');
-
-         startCDCListeners(sfClient, channel);
-         general_logger.info('Started CDC listeners');
+/**
+* Starts the CRM service.
+* @async
+* @returns {Promise<void>}
+*/
+async function startCRMService() {
+    try {
+        /**
+         * Make a connection to RabbitMQ.
+         * @type {Channel}
+         */
+        const channel = await connectToRabbitMQ();
+        general_logger.info('Connected to RabbitMQ');
+        /**
+         * Login to Salesforce and create a client instance.
+         * @type {SalesforceClient}
+         */
+        const sfClient = await loginToSalesforce();
+        general_logger.info('Logged in to Salesforce');
+        /**
+         * Start the user consumer.
+         */
+        await StartUserConsumer(channel, sfClient);
+        general_logger.info('Started consumers');
+        /**
+        * Start the CDC listeners.
+        */
+        startCDCListeners(sfClient, channel);
+        general_logger.info('Started CDC listeners');
 
          await startHeartbeat(
              channel,
@@ -95,11 +106,19 @@ const ContactCDCHandler = require('./cdc/ContactCDCHandler');
      }
  }
 
-// Start the CRM service
+/**
+ * Main entry point for the CRM service.
+ */
 startCRMService()
+    /**
+     * Logs a message indicating that the CRM service has started successfully.
+     */
      .then(() => {
          general_logger.info('CRM Service started successfully');
      })
+    /**
+     * Logs an error message if the CRM service fails to start.
+     */
      .catch((err) => {
          general_logger.error('Failed to start CRM Service:', err);
          process.exit(1);

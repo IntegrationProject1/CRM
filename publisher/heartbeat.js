@@ -10,7 +10,6 @@ const {logger_logger} = require("../utils/logger");
  * @param {string} [serviceName='CRM_Service'] - Service name (optional).
  * @returns {Promise<void>} Resolves when exchange is set and interval starts.
  */
-
 async function startHeartbeat(channel, exchangeName, routingKey, serviceName = 'CRM_Service') {
    await channel.assertExchange(exchangeName, 'direct', {durable: true});
 

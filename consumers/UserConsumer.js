@@ -1,17 +1,17 @@
-/**
- * @module UserConsumer
- * @description Beheert de verwerking van berichten uit RabbitMQ-queues voor het aanmaken, bijwerken en verwijderen van gebruikers in Salesforce.
- */
+// /**
+//  * @module UserConsumer
+//  * @description Beheert de verwerking van berichten uit RabbitMQ-queues voor het aanmaken, bijwerken en verwijderen van gebruikers in Salesforce.
+//  */
 
 const xmlJsonTranslator = require("../utils/xmlJsonTranslator");
 const {user_logger} = require("../utils/logger");
 
-/**
- * Start de UserConsumer om berichten van RabbitMQ-queues te verwerken.
- * @param {Object} channel - Het RabbitMQ-kanaal voor het consumeren van berichten.
- * @param {Object} salesforceClient - De Salesforce-client voor interactie met Salesforce.
- * @returns {Promise<void>} - Een belofte die wordt vervuld wanneer de consumer is gestart.
- */
+// /**
+//  * Start de UserConsumer om berichten van RabbitMQ-queues te verwerken.
+//  * @param {Object} channel - Het RabbitMQ-kanaal voor het consumeren van berichten.
+//  * @param {Object} salesforceClient - De Salesforce-client voor interactie met Salesforce.
+//  * @returns {Promise<void>} - Een belofte die wordt vervuld wanneer de consumer is gestart.
+//  */
 module.exports = async function StartUserConsumer(channel, salesforceClient) {
 
    const queues = ["create", "update", "delete"];
