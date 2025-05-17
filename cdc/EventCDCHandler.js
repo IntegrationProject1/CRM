@@ -66,15 +66,21 @@ module.exports = async function EventCDCHandler(message, sfClient, RMQChannel) {
                   EndDateTime: cdcObject.EndDateTime__c,
                   Location: cdcObject.Location__c,
                   Organisator: cdcObject.Organiser__c,
-                  Capacity: cdcObject.GuestSpeaker__c,
+                  Capacity: 1, // bestaat niet in Event__c maar is in session
                   EventType: cdcObject.EventType__c,
-                  RegisteredUsers: cdcObject.RegisteredUsers || { User: [] }
+                  RegisteredUsers: [
+                     ...(cdcObject.Session_Participant__c ? [{ User: { UUID: cdcObject.Session_Participant__c } }] : [])
+
+                     // { User: { UUID: cdcObject.Session_Participant__c } }
+                  ]
                }
             };
             xsdPath = './xsd/eventsXSD/CreateEvent.xsd';
             break;
 
          case 'UPDATE':
+            return console.warn("⚠️ Update Event kan nog niet worden geimplementeerd, door een niet valide XSD");
+
             const updatedRecord = await sfClient.sObject('Event__c')
                .retrieve(recordId);
             if (!updatedRecord?.UUID__c) {
@@ -116,8 +122,7 @@ module.exports = async function EventCDCHandler(message, sfClient, RMQChannel) {
 
             JSONMsg = {
                DeleteEvent: {
-                  UUID: deletedRecord.UUID__c,
-                  RegisteredUsers: { User: [] }
+                  UUID: deletedRecord.UUID__c
                }
             };
             xsdPath = './xsd/eventsXSD/DeleteEvent.xsd';
@@ -128,24 +133,22 @@ module.exports = async function EventCDCHandler(message, sfClient, RMQChannel) {
             return;
       }
 
-      console.log("json result:", JSONMsg)
-
       xmlMessage = jsonToXml(JSONMsg);
-      console.log("xml result:", xmlMessage)
 
       if (!validator.validateXml(xmlMessage, xsdPath)) {
          throw new Error(`XML validation failed for action: ${action}`);
       }
 
-         return console.log("XML Validation passed successfully");
-
       const exchangeName = 'event';
       await RMQChannel.assertExchange(exchangeName, 'topic', { durable: true });
 
+
+      return; // RabbitMQ queues nog niet duidelijk
+
       const routingKeys = [
-         `frontend.event.${action.toLowerCase()}`,
-         `facturatie.event.${action.toLowerCase()}`,
-         `kassa.event.${action.toLowerCase()}`
+         // `frontend.event.${action.toLowerCase()}`,
+         // `facturatie.event.${action.toLowerCase()}`,
+         // `kassa.event.${action.toLowerCase()}`
       ];
 
       for (const routingKey of routingKeys) {
