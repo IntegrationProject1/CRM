@@ -4,7 +4,8 @@
     "main": "app/index.js",
     "type": "commonjs",
     "scripts": {
-        "start": "node index.js"
+        "start": "node index.js",
+        "test": "jest"
     },
     "dependencies": {
         "amqplib": "^0.10.3",
@@ -12,12 +13,11 @@
         "dotenv": "^16.0.3",
         "jsforce": "^3.7.0",
         "libxmljs2": "^0.35.0",
-        "qs": "^6.14.0",
         "pino": "^8.0.0",
-        "pino-pretty": "^9.0.0"
+        "pino-pretty": "^9.0.0",
+        "qs": "^6.14.0"
     },
-    "scripts": {
-        "test": "jest"
+    "devDependencies": {
+        "jest": "^29.7.0"
     }
-
 }

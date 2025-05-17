@@ -75,4 +75,7 @@ async function sendMessage(exchangeName, status_level, code, message) {
     }
 }
 
-module.exports = sendMessage;
+module.exports = {
+    sendMessage,
+    sendLog
+};
