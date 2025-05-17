@@ -27,6 +27,6 @@ jobs:
   
       - name: Run tests
         run: |
-          echo "⚠️ No test setup, skipping"
+          # echo "⚠️ No test setup, skipping"
           # Uncomment the line below to run tests when ready
-          # npm test
+          npm test
