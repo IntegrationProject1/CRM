@@ -5,17 +5,16 @@
     <xs:element name="CreateSession">
         <xs:complexType>
             <xs:sequence>
-                <xs:element name="UUID" type="xs:dateTime"/>
-                <xs:element name="EventName" type="xs:string"/>
+                <xs:element name="SessionUUID" type="xs:dateTime"/>
+                <xs:element name="EventUUID" type="xs:string"/>
                 <xs:element name="SessionName" type="xs:string"/>
-                <xs:element name="Description" type="xs:string"/>
+                <xs:element name="SessionDescription" type="xs:string"/>
                 <xs:element name="GuestSpeakers">
                     <xs:complexType>
                         <xs:sequence>
                             <xs:element name="GuestSpeaker" maxOccurs="unbounded">
                                 <xs:complexType>
                                     <xs:sequence>
-                                        <xs:element name="Name" type="xs:string"/>
                                         <xs:element name="UUID" type="xs:string"/>
                                     </xs:sequence>
                                 </xs:complexType>
@@ -26,7 +25,7 @@
                 <xs:element name="Capacity" type="xs:positiveInteger"/>
                 <xs:element name="StartDateTime" type="xs:dateTime"/>
                 <xs:element name="EndDateTime" type="xs:dateTime"/>
-                <xs:element name="Location" type="xs:string"/>
+                <xs:element name="SessionLocation" type="xs:string"/>
                 <xs:element name="SessionType" type="xs:string"/>
                 <xs:element name="RegisteredUsers" minOccurs="0">
                     <xs:complexType>
@@ -35,7 +34,6 @@
                                 <xs:complexType>
                                     <xs:sequence>
                                         <xs:element name="UUID" type="xs:string"/>
-                                        <xs:element name="Name" type="xs:string"/>
                                     </xs:sequence>
                                 </xs:complexType>
                             </xs:element>

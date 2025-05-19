@@ -1,17 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
            elementFormDefault="qualified">
+
     <xs:element name="UpdateEvent">
         <xs:complexType>
             <xs:sequence>
-                <xs:element name="UUID" type="xs:dateTime"/>
-                <xs:element name="FieldsToUpdate" minOccurs="1">
+                <xs:element name="EventUUID" type="xs:dateTime"/>
+                <xs:element name="EventName" type="xs:string" minOccurs="0" maxOccurs="1"/>
+                <xs:element name="Description" type="xs:string" minOccurs="0" maxOccurs="1"/>
+                <xs:element name="StartDateTime" type="xs:dateTime" minOccurs="0" maxOccurs="1"/>
+                <xs:element name="EndDateTime" type="xs:dateTime" minOccurs="0" maxOccurs="1"/>
+                <xs:element name="EventLocation" type="xs:string" minOccurs="0" maxOccurs="1"/>
+                <xs:element name="Organisator" type="xs:string" minOccurs="0" maxOccurs="1"/>
+                <xs:element name="Capacity" type="xs:positiveInteger" minOccurs="0" maxOccurs="1"/>
+                <xs:element name="EventType" type="xs:string" minOccurs="0" maxOccurs="1"/>
+                <xs:element name="RegisteredUsers" minOccurs="0">
                     <xs:complexType>
                         <xs:sequence>
-                            <xs:element name="Field" maxOccurs="unbounded">
+                            <xs:element name="User" maxOccurs="unbounded" minOccurs="0">
                                 <xs:complexType>
                                     <xs:sequence>
-                                        <xs:element name="NewValue" type="xs:string"/>
+                                        <xs:element name="UUID" type="xs:string" minOccurs="0" maxOccurs="1"/>
                                     </xs:sequence>
                                 </xs:complexType>
                             </xs:element>
@@ -21,4 +30,5 @@
             </xs:sequence>
         </xs:complexType>
     </xs:element>
+
 </xs:schema>

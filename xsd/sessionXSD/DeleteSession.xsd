@@ -4,7 +4,9 @@
     <xs:element name="DeleteSession">
         <xs:complexType>
             <xs:sequence>
-                <xs:element name="UUID" type="xs:dateTime"/>
+                <xs:element name="ActionType" type="xs:string"/>
+                <xs:element name="SessionUUID" type="xs:dateTime"/>
+                <xs:element name="TimeOfAction" type="xs:dateTime"/>
             </xs:sequence>
         </xs:complexType>
     </xs:element>
