@@ -59,19 +59,17 @@ module.exports = async function EventCDCHandler(message, sfClient, RMQChannel) {
 
             JSONMsg = {
                CreateEvent: {
-                  UUID: UUID,
-                  Name: cdcObject.Name,
+                  EventUUID: UUID,
+                  EventName: cdcObject.Name,
                   Description: cdcObject.Description__c,
                   StartDateTime: cdcObject.StartDateTime__c,
                   EndDateTime: cdcObject.EndDateTime__c,
-                  Location: cdcObject.Location__c,
+                  EventLocation: cdcObject.Location__c,
                   Organisator: cdcObject.Organiser__c,
                   Capacity: 1, // bestaat niet in Event__c maar is in session
                   EventType: cdcObject.EventType__c,
                   RegisteredUsers: [
-                     ...(cdcObject.Session_Participant__c ? [{ User: { UUID: cdcObject.Session_Participant__c } }] : [])
-
-                     // { User: { UUID: cdcObject.Session_Participant__c } }
+                     ...(cdcObject.Session_Participant__c ? { User: { UUID: cdcObject.Session_Participant__c } } : {})
                   ]
                }
             };
@@ -79,28 +77,28 @@ module.exports = async function EventCDCHandler(message, sfClient, RMQChannel) {
             break;
 
          case 'UPDATE':
-            return console.warn("⚠️ Update Event kan nog niet worden geimplementeerd, door een niet valide XSD");
-
             const updatedRecord = await sfClient.sObject('Event__c')
                .retrieve(recordId);
+
             if (!updatedRecord?.UUID__c) {
                throw new Error(`No UUID found for record: ${recordId}`);
             }
 
+            // Add fields to update only if they exist in cdcObject (changed fields)
             JSONMsg = {
                UpdateEvent: {
-                  UUID: updatedRecord.UUID__c,
-                  FieldsToUpdate: {
-                     ...(cdcObject.Name && { Name: cdcObject.Name }),
-                     ...(cdcObject.Description__c && { Description: cdcObject.Description__c }),
-                     ...(cdcObject.StartDateTime__c && { StartDateTime: cdcObject.StartDateTime__c }),
-                     ...(cdcObject.EndDateTime__c && { EndDateTime: cdcObject.EndDateTime__c }),
-                     ...(cdcObject.Location__c && { Location: cdcObject.Location__c }),
-                     ...(cdcObject.Organiser__c && { Organisator: cdcObject.Organiser__c }),
-                     ...(cdcObject.GuestSpeaker__c && { Capacity: cdcObject.GuestSpeaker__c }),
-                     ...(cdcObject.EventType__c && { EventType: cdcObject.EventType__c }),
-                     ...(cdcObject.RegisteredUsers && { RegisteredUsers: cdcObject.RegisteredUsers || { User: [] } })
-                  }
+                  EventUUID: updatedRecord.UUID__c,
+                  ...(cdcObject.Name && { EventName: cdcObject.Name }),
+                  ...(cdcObject.Description__c && { Description: cdcObject.Description__c }),
+                  ...(cdcObject.StartDateTime__c && { StartDateTime: cdcObject.StartDateTime__c }),
+                  ...(cdcObject.EndDateTime__c && { EndDateTime: cdcObject.EndDateTime__c }),
+                  ...(cdcObject.Location__c && { EventLocation: cdcObject.Location__c }),
+                  ...(cdcObject.Organiser__c && { Organisator: cdcObject.Organiser__c }),
+                  ...(cdcObject.GuestSpeaker__c && { Capacity: cdcObject.GuestSpeaker__c }),
+                  ...(cdcObject.EventType__c && { EventType: cdcObject.EventType__c }),
+                  ...(cdcObject.Session_Participant__c && {
+                     RegisteredUsers: [{ User: { UUID: cdcObject.Session_Participant__c } }]
+                  })
                }
             };
             xsdPath = './xsd/eventsXSD/UpdateEvent.xsd';
@@ -122,7 +120,9 @@ module.exports = async function EventCDCHandler(message, sfClient, RMQChannel) {
 
             JSONMsg = {
                DeleteEvent: {
-                  UUID: deletedRecord.UUID__c
+                  ActionType: action,
+                  EventUUID: deletedRecord.UUID__c,
+                  TimeOfAction: new Date().toISOString()
                }
             };
             xsdPath = './xsd/eventsXSD/DeleteEvent.xsd';
