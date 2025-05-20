@@ -54,8 +54,8 @@ class SalesforceClient {
    async deleteUser(id) {
       const result = await this.conn.sobject('Contact').destroy(id);
       console.log('[DELETE] Salesforce:', result);
-   // ----------- EVENT (Event__c) CRUD ------------
-
+      // ----------- EVENT (Event__c) CRUD ------------
+   }
    async createEvent(data) {
       const result = await this.conn.sobject('Event__c').create(data);
       console.log('[CREATE] Salesforce Event:', result);
