@@ -50,18 +50,19 @@ function jsonToAddress(data) {
  * const address = 'straat a 20 b';
  * const parsed = parseStreet(address);
  */
+
+
 function parseStreet(address) {
-    const regex = /^(.+?)\s(\d+)(?:\s([a-zA-Z]+))?$/;
+    if (!address) return { street: '', houseNumber: '', busCode: null };
+
+    // Verbeterde regex voor straat, huisnummer en buscode
+    const regex = /^\s*([^0-9]+?)\s*(\d+)?\s*([a-zA-Z]*)?\s*$/;
     const match = address.match(regex);
 
-    if (!match) {
-        throw new Error("Invalid address format");
-    }
-
     return {
-        street: match[1],
-        houseNumber: match[2],
-        busCode: match[3] || null
+        street: (match?.[1] || '').trim(),
+        houseNumber: (match?.[2] || '').trim(),
+        busCode: (match?.[3] || '').trim() || null
     };
 }
 

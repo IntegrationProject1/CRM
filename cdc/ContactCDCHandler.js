@@ -2,6 +2,31 @@ require('dotenv').config();
 const { jsonToXml } = require("../utils/xmlJsonTranslator");
 const validator = require("../utils/xmlValidator");
 const hrtimeBase = process.hrtime.bigint();
+const { jsonToAddress } = require("../utils/adressTranslator");
+
+// voor update te fixen
+function formatAddress(address) {
+   if (!address || !address.Street) return "";
+
+   try {
+      const streetParts = [
+         address.Street,
+         address.HouseNumber,
+         address.BusCode
+      ].filter(Boolean).join(' ');
+
+      return jsonToAddress({
+         Country: address.Country || '',
+         State: address.State || '',
+         PostalCode: address.PostalCode || '',
+         City: address.City || '',
+         Street: streetParts
+      });
+   } catch (error) {
+      console.error('Adresconversiefout:', error);
+      return "";
+   }
+}
 
 /**
  * Generates the current ISO 8601 timestamp with microsecond precision.
@@ -60,6 +85,7 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
             await sfClient.updateUser(recordId, { UUID__c: UUID });
             console.log("✅ UUID succesvol bijgewerkt:", UUID);
 
+
             JSONMsg = {
                UserMessage: {
                   ActionType: action,
@@ -69,9 +95,22 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
                   FirstName: cdcObjectData.Name?.FirstName || "",
                   LastName: cdcObjectData.Name?.LastName || "",
                   PhoneNumber: cdcObjectData.Phone || "",
-                  EmailAddress: cdcObjectData.Email || ""
+                  EmailAddress: cdcObjectData.Email || "",
+
+                  Business: {
+                     BusinessName: cdcObjectData.BusinessName__c || "",
+                     BusinessEmail: cdcObjectData.BusinessEmail__c || "",
+                     RealAddress: cdcObjectData.MailingAddress
+                         ? jsonToAddress(cdcObjectData.MailingAddress)
+                         : "",
+                     BTWNumber: cdcObjectData.BTWNumber__c || "",
+                     FacturationAddress: cdcObjectData.OtherAddress
+                         ? jsonToAddress(cdcObjectData.OtherAddress)
+                         : ""
+                  }
                }
             };
+            console.warn('test create', JSONMsg);
             xsdPath = './xsd/userXSD/UserCreate.xsd';
             break;
 
@@ -80,6 +119,23 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
             if (!updatedRecord?.UUID__c) {
                throw new Error(`Geen UUID gevonden voor record: ${recordId}`);
             }
+
+            // Maak adresobjecten van Salesforce velden voor de update te laten werken.
+            const mailingAddress = {
+               Street: updatedRecord.MailingStreet,
+               City: updatedRecord.MailingCity,
+               State: updatedRecord.MailingState,
+               PostalCode: updatedRecord.MailingPostalCode,
+               Country: updatedRecord.MailingCountry
+            };
+
+            const otherAddress = {
+               Street: updatedRecord.OtherStreet,
+               City: updatedRecord.OtherCity,
+               State: updatedRecord.OtherState,
+               PostalCode: updatedRecord.OtherPostalCode,
+               Country: updatedRecord.OtherCountry
+            };
 
             JSONMsg = {
                UserMessage: {
@@ -90,7 +146,14 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
                   FirstName: updatedRecord.FirstName || "",
                   LastName: updatedRecord.LastName || "",
                   PhoneNumber: updatedRecord.Phone || "",
-                  EmailAddress: updatedRecord.Email || ""
+                  EmailAddress: updatedRecord.Email || "",
+                  Business: {
+                     BusinessName: updatedRecord.BusinessName__c || "",
+                     BusinessEmail: updatedRecord.BusinessEmail__c || "",
+                     RealAddress: formatAddress(mailingAddress),
+                     BTWNumber: updatedRecord.BTWNumber__c || "",
+                     FacturationAddress: formatAddress(otherAddress)
+                  }
                }
             };
             xsdPath = './xsd/userXSD/UserUpdate.xsd';
