@@ -2,12 +2,13 @@ require('dotenv').config();
 const amqp = require('amqplib');
 const ContactCDCHandler = require('./cdc/ContactCDCHandler');
 const EventCDCHandler = require('./cdc/EventCDCHandler');
-const SessionCDCHandler = require('./cdc/SessionCDCHandler'); //  toegevoegd
-const SessionParticipateCDCHandler = require('./cdc/SessionParticipateCDCHandler'); // toegevoegd
+const SessionCDCHandler = require('./cdc/SessionCDCHandler');
+const SessionParticipateCDCHandler = require('./cdc/SessionParticipateCDCHandler');
 const SalesforceClient = require('./salesforceClient');
 const StartUserConsumer = require('./consumers/UserConsumer');
-const StartSessionConsumer = require('./consumers/SessionConsumer'); // toegevoegd
-const StartSessionParticipateConsumer = require('./consumers/SessionParticipateConsumer'); // toegevoegd
+const StartSessionConsumer = require('./consumers/SessionConsumer');
+const StartSessionParticipateConsumer = require('./consumers/SessionParticipateConsumer');
+const StartEventConsumer = require('./consumers/EventConsumer');
 const startHeartbeat = require('./publisher/heartbeat');
 const { general_logger } = require("./utils/logger");
 
@@ -39,6 +40,7 @@ const { general_logger } = require("./utils/logger");
 
       general_logger.info('Start de consumers');
       await StartUserConsumer(channel, sfClient);
+      await StartEventConsumer(channel, sfClient);
       await StartSessionConsumer(channel, sfClient);                // ✅ Session
       await StartSessionParticipateConsumer(channel, sfClient);     // ✅ SessionParticipate
 
