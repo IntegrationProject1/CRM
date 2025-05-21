@@ -33,11 +33,6 @@ jobs:
 
       - name: Set default .env for local RabbitMQ CI test
         run: |
-<<<<<<< Updated upstream
-          echo "⚠️ No test setup, skipping"
-          # Uncomment the line below to run tests when ready
-          # npm test
-=======
           echo "RABBITMQ_HOST=localhost" >> .env
           echo "RABBITMQ_PORT=5672" >> .env
           echo "RABBITMQ_USERNAME=guest" >> .env
@@ -50,4 +45,3 @@ jobs:
 
       - name: Run all tests (unit, integration, e2e)
         run: npm test
->>>>>>> Stashed changes

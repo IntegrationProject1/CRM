@@ -23,7 +23,6 @@ function generateMicroDateTime() {
 module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel) {
    const { ChangeEventHeader, ...cdcObjectData } = message.payload;
 
-   // ✅ Alleen in productie negeren we events afkomstig van onze eigen API-calls
    const ignoreOrigin = process.env.IGNORE_CDC_API_ORIGIN === 'true';
    if (!ignoreOrigin && ChangeEventHeader.changeOrigin === "com/salesforce/api/rest/50.0") {
       console.log("🚫 Salesforce API call gedetecteerd, actie overgeslagen.");
