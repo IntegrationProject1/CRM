@@ -13,99 +13,155 @@ const xmlJsonTranslator = require("../utils/xmlJsonTranslator");
  */
 module.exports = async function StartSessionConsumer(channel, salesforceClient) {
 
+   function capitalize(s) {
+      return String(s[0]).toUpperCase() + String(s).slice(1);
+   }
+
    const queues = ["create", "update", "delete"];
 
    for (const action of queues) {
-      await channel.assertQueue(`crm_session_${action}`, { durable: true });
+      await channel.assertQueue(`crm_session_${action}`, {durable: true});
 
+      console.log("Luisteren op queue:", `crm_session_${action}`);
       await channel.consume(`crm_session_${action}`, async (msg) => {
          if (!msg) return;
 
          const content = msg.content.toString();
-         console.log(`\uD83D\uDCE5 [${action}SessionConsumer] Ontvangen`);
+         console.log(`📥 [${action}SessionConsumer] Ontvangen`);
 
-         // convert XML to JSON
-         let jsonConv;
+         // XML naar JSON conversie
+         let rabbitMQMsg;
          try {
-            jsonConv = await xmlJsonTranslator.xmlToJson(content);
+            rabbitMQMsg = await xmlJsonTranslator.xmlToJson(content);
          } catch (e) {
             channel.nack(msg, false, false);
             console.error('❌ Ongeldig XML formaat:', content);
             return;
          }
 
-         const objectData = jsonConv.CreateSession || jsonConv.UpdateSession || jsonConv.DeleteSession;
-         if (!objectData) {
-            channel.nack(msg, false, false);
-            console.error("❌ Ongeldig formaat:", jsonConv);
-            return;
-         }
-
-         if (!objectData.UUID) {
-            channel.nack(msg, false, false);
-            console.error("❌ UUID ontbreekt in het bericht");
-            return;
-         }
-
          let SalesforceObjId;
-         if (["update", "delete"].includes(action)) {
+         rabbitMQMsg = rabbitMQMsg[`${capitalize(action)}Session`];
+
+         if (!rabbitMQMsg) {
+            channel.nack(msg, false, false);
+            console.error("❌ Verkeerde root XSD:", rabbitMQMsg);
+            return;
+         }
+
+         if (['update', 'delete'].includes(action)) {
+            // Zoek Salesforce ID via UUID
+            const query = salesforceClient.sObject("Session__c")
+                .select("Id")
+                .where({UUID__c: rabbitMQMsg.SessionUUID})
+                .limit(1);
+
+            let result;
             try {
-               const query = salesforceClient.sObject("Session__c") // CMD: custom object aanpassen indien anders
-                   .select("Id")
-                   .where({ UUID__c: objectData.UUID })
-                   .limit(1);
-
-               const result = await query.run();
-
-               if (!result || result.length === 0) {
-                  channel.nack(msg, false, false);
-                  console.error("❌ Geen Salesforce ID gevonden voor UUID:", objectData.UUID);
-                  return;
-               }
-               SalesforceObjId = result[0].Id;
+               result = await query.run();
             } catch (err) {
                channel.nack(msg, false, false);
-               console.error("❌ Fout bij ophalen Salesforce ID:", err.message);
+               console.error("❌ Fout bij ophalen Salesforce Sessie ID:", err.message);
                return;
             }
+
+            if (!result || result.length === 0) {
+               channel.nack(msg, false, false);
+               console.error("❌ Geen Salesforce Sessie gevonden voor UUID:", rabbitMQMsg.SessionUUID);
+               return;
+            }
+            SalesforceObjId = result[0].Id;
          }
 
-         let JSONMsg;
-
+         let salesForceMsg;
          switch (action) {
             case "create":
                try {
-                  JSONMsg = {
-                     UUID__c: objectData.UUID,
-                     EventName__c: objectData.EventName,
-                     Name: objectData.SessionName,
-                     Description__c: objectData.Description,
-                     Capacity__c: objectData.Capacity,
-                     StartDateTime__c: objectData.StartDateTime,
-                     EndDateTime__c: objectData.EndDateTime,
-                     Location__c: objectData.Location,
-                     SessionType__c: objectData.SessionType
-                     // CMD: Hier kun je logica toevoegen om GuestSpeakers of RegisteredUsers te koppelen als child object
+                  // Zoek gerelateerd event
+                  const eventQuery = await salesforceClient.sObject("Event__c")
+                      .select("Id")
+                      .where({UUID__c: rabbitMQMsg.EventUUID})
+                      .limit(1);
+                  const eventResult = await eventQuery.run();
+
+                  salesForceMsg = {
+                     "UUID__c": rabbitMQMsg.SessionUUID,
+                     "Name": rabbitMQMsg.SessionName,
+                     "Description__c": rabbitMQMsg.SessionDescription || "",
+                     "SessionStart__c": rabbitMQMsg.StartDateTime,
+                     "SessionEnd__c": rabbitMQMsg.EndDateTime,
+                     "Location__c": rabbitMQMsg.SessionLocation,
+                     "Instructor__c": rabbitMQMsg.Instructor || "",
+                     "Capacity__c": rabbitMQMsg.Capacity || 0,
+                     "Type__c": rabbitMQMsg.SessionType,
+                     "Event__c": eventResult[0]?.Id || ""
                   };
 
-                  await salesforceClient.createSession(JSONMsg); // CMD: Methode moet bestaan in je client
+                  // Verwerk gastsprekers
+                  if(rabbitMQMsg.GuestSpeakers?.GuestSpeaker) {
+                     const speakers = rabbitMQMsg.GuestSpeakers.GuestSpeaker
+                         .map(s => s.email).join(';');
+                     salesForceMsg.GuestSpeaker__c = speakers;
+                  }
+
+                  // Verwerk gebruikersregistraties
+                  if(rabbitMQMsg.RegisteredUsers?.User) {
+                     const userIds = await Promise.all(
+                         rabbitMQMsg.RegisteredUsers.User.map(async u => {
+                            const userQuery = salesforceClient.sObject("User")
+                                .select("Id")
+                                .where({Email: u.email})
+                                .limit(1);
+                            const result = await userQuery.run();
+                            return result[0]?.Id;
+                         })
+                     );
+                     salesForceMsg.Session_Participant__c = userIds.filter(Boolean).join(';');
+                  }
+
+                  await salesforceClient.createSession(salesForceMsg);
                   console.log("✅ Sessie aangemaakt in Salesforce");
                } catch (err) {
                   channel.nack(msg, false, false);
-                  console.error("❌ Fout bij create:", err.message);
+                  console.error("❌ Fout bij aanmaken:", err.message);
                   return;
                }
                break;
 
             case "update":
                try {
-                  const updates = {};
-                  const fields = objectData.FieldsToUpdate?.Field || [];
-                  for (const field of fields) {
-                     updates[`${field.Name}__c`] = field.NewValue; // CMD: veldnamen aanpassen indien nodig
+                  salesForceMsg = {
+                     ...(rabbitMQMsg.SessionName && {"Name": rabbitMQMsg.SessionName}),
+                     ...(rabbitMQMsg.SessionDescription && {"Description__c": rabbitMQMsg.SessionDescription}),
+                     ...(rabbitMQMsg.StartDateTime && {"SessionStart__c": rabbitMQMsg.StartDateTime}),
+                     ...(rabbitMQMsg.EndDateTime && {"SessionEnd__c": rabbitMQMsg.EndDateTime}),
+                     ...(rabbitMQMsg.SessionLocation && {"Location__c": rabbitMQMsg.SessionLocation}),
+                     ...(rabbitMQMsg.Instructor && {"Instructor__c": rabbitMQMsg.Instructor}),
+                     ...(rabbitMQMsg.Capacity && {"Capacity__c": rabbitMQMsg.Capacity}),
+                     ...(rabbitMQMsg.SessionType && {"Type__c": rabbitMQMsg.SessionType})
+                  };
+
+                  // Update gastsprekers
+                  if(rabbitMQMsg.GuestSpeakers?.GuestSpeaker) {
+                     salesForceMsg.GuestSpeaker__c = rabbitMQMsg.GuestSpeakers.GuestSpeaker
+                         .map(s => s.email).join(';');
                   }
 
-                  await salesforceClient.updateSession(SalesforceObjId, updates);
+                  // Update geregistreerde gebruikers
+                  if(rabbitMQMsg.RegisteredUsers?.User) {
+                     const userIds = await Promise.all(
+                         rabbitMQMsg.RegisteredUsers.User.map(async u => {
+                            const userQuery = salesforceClient.sObject("User")
+                                .select("Id")
+                                .where({Email: u.email})
+                                .limit(1);
+                            const result = await userQuery.run();
+                            return result[0]?.Id;
+                         })
+                     );
+                     salesForceMsg.Session_Participant__c = userIds.filter(Boolean).join(';');
+                  }
+
+                  await salesforceClient.updateSession(SalesforceObjId, salesForceMsg);
                   console.log("✅ Sessie geüpdatet in Salesforce");
                } catch (err) {
                   channel.nack(msg, false, false);
@@ -134,6 +190,6 @@ module.exports = async function StartSessionConsumer(channel, salesforceClient) 
          await channel.ack(msg);
       });
 
-      console.log(`🔔 Listening for messages on queue \"crm_session_${action}\"…`);
+      console.log(`🔔 Luistert naar berichten op queue "crm_session_${action}"…`);
    }
 };

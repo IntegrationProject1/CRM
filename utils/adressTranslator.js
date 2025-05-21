@@ -13,6 +13,7 @@
  */
 function addressToJson(address) {
     const parts = address.slice(0, -1).split(';');
+    console.log(parts);
     return {
         State: parts[1],
         Street: parts[4],
