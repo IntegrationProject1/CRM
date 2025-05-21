@@ -20,7 +20,7 @@
                             <xs:element name="User" maxOccurs="unbounded" minOccurs="0">
                                 <xs:complexType>
                                     <xs:sequence>
-                                        <xs:element name="UUID" type="xs:string" minOccurs="0" maxOccurs="1"/>
+                                        <xs:element name="email" type="xs:string" minOccurs="0" maxOccurs="1"/>
                                     </xs:sequence>
                                 </xs:complexType>
                             </xs:element>
