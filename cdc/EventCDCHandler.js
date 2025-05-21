@@ -68,9 +68,7 @@ module.exports = async function EventCDCHandler(message, sfClient, RMQChannel) {
                   Organisator: cdcObject.Organiser__c,
                   Capacity: 1, // bestaat niet in Event__c maar is in session
                   EventType: cdcObject.EventType__c,
-                  RegisteredUsers: [
-                     ...(cdcObject.Session_Participant__c ? { User: { UUID: cdcObject.Session_Participant__c } } : {})
-                  ]
+                  RegisteredUsers: []
                }
             };
             xsdPath = './xsd/eventsXSD/CreateEvent.xsd';
@@ -95,10 +93,7 @@ module.exports = async function EventCDCHandler(message, sfClient, RMQChannel) {
                   ...(cdcObject.Location__c && { EventLocation: cdcObject.Location__c }),
                   ...(cdcObject.Organiser__c && { Organisator: cdcObject.Organiser__c }),
                   ...(cdcObject.GuestSpeaker__c && { Capacity: cdcObject.GuestSpeaker__c }),
-                  ...(cdcObject.EventType__c && { EventType: cdcObject.EventType__c }),
-                  ...(cdcObject.Session_Participant__c && {
-                     RegisteredUsers: [{ User: { UUID: cdcObject.Session_Participant__c } }]
-                  })
+                  ...(cdcObject.EventType__c && { EventType: cdcObject.EventType__c })
                }
             };
             xsdPath = './xsd/eventsXSD/UpdateEvent.xsd';
@@ -142,13 +137,11 @@ module.exports = async function EventCDCHandler(message, sfClient, RMQChannel) {
       const exchangeName = 'event';
       await RMQChannel.assertExchange(exchangeName, 'topic', { durable: true });
 
-
-      return; // RabbitMQ queues nog niet duidelijk
-
       const routingKeys = [
          // `frontend.event.${action.toLowerCase()}`,
          // `facturatie.event.${action.toLowerCase()}`,
-         // `kassa.event.${action.toLowerCase()}`
+         // `kassa.event.${action.toLowerCase()}`,
+         `planning.event.${action.toLowerCase()}`
       ];
 
       for (const routingKey of routingKeys) {
