@@ -45,7 +45,7 @@ async function sendLog(channel, exchangeName, serviceName = 'CRM_Service', statu
     }
 
     channel.publish(exchangeName, '', Buffer.from(xml));
-    logger_logger.info('Sending message', channel, exchangeName, serviceName, status_level);
+    logger_logger.debug('Sending message', channel, exchangeName, serviceName, status_level);
 }
 
 /**
