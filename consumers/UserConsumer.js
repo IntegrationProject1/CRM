@@ -96,13 +96,13 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
                      "BusinessEmail__c": businessData.BusinessEmail || "",
                      "BTWNumber__c": businessData.BTWNumber || "",
                      // RealAddress mapping
-                     "MailingStreet": `${realAddress.Street} ${realAddress.HouseNumber} ${realAddress.BusCode || ""}`.trim(),
+                     "MailingStreet": `${realAddress.Street}`.trim(),
                      "MailingCity": realAddress.City || "",
                      "MailingState": realAddress.State || "",
                      "MailingPostalCode": realAddress.PostalCode || "",
                      "MailingCountry": realAddress.Country || "",
                      // FacturationAddress mapping
-                     "OtherStreet": `${facturationAddress.Street} ${facturationAddress.HouseNumber} ${facturationAddress.BusCode || ""}`.trim(),
+                     "OtherStreet": `${facturationAddress.Street}`.trim(),
                      "OtherCity": facturationAddress.City || "",
                      "OtherState": facturationAddress.State || "",
                      "OtherPostalCode": facturationAddress.PostalCode || "",
