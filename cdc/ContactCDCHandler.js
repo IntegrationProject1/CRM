@@ -5,13 +5,6 @@ const hrtimeBase = process.hrtime.bigint();
 
 /**
  * Generates the current ISO 8601 timestamp with microsecond precision.
- * @returns {string} ISO 8601 date-time string with microseconds.
- * @example
- * generateIsoMicroTimestamp();
- * // "2025-05-07T17:14:29.480652Z"
- * @description
- * Combines `Date.now()` milliseconds with `process.hrtime()` nanoseconds
- * to create a unique timestamp with microsecond precision.
  */
 function generateMicroDateTime() {
    const diffNs = process.hrtime.bigint() - hrtimeBase;
@@ -26,15 +19,13 @@ function generateMicroDateTime() {
 /**
  * @module ContactCDCHandler
  * @description Verwerkt Salesforce CDC-berichten voor Contact-objecten en publiceert ze naar RabbitMQ.
- * @param {Object} message - Het Salesforce CDC-bericht.
- * @param {Object} sfClient - De Salesforce-client voor interactie met Salesforce.
- * @param {Object} RMQChannel - Het RabbitMQ-kanaal voor het publiceren van berichten.
- * @returns {Promise<void>}
  */
 module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel) {
    const { ChangeEventHeader, ...cdcObjectData } = message.payload;
 
-   if (ChangeEventHeader.changeOrigin === "com/salesforce/api/rest/50.0") {
+   // ✅ Alleen in productie negeren we events afkomstig van onze eigen API-calls
+   const ignoreOrigin = process.env.IGNORE_CDC_API_ORIGIN === 'true';
+   if (!ignoreOrigin && ChangeEventHeader.changeOrigin === "com/salesforce/api/rest/50.0") {
       console.log("🚫 Salesforce API call gedetecteerd, actie overgeslagen.");
       return;
    }
@@ -98,10 +89,10 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
 
          case 'DELETE':
             const query = sfClient.sObject('Contact')
-                .select('UUID__c')
-                .where({ Id: recordId, IsDeleted: true })
-                .limit(1)
-                .scanAll(true);
+               .select('UUID__c')
+               .where({ Id: recordId, IsDeleted: true })
+               .limit(1)
+               .scanAll(true);
 
             const resultDel = await query.run();
             const deletedRecord = resultDel[0];
