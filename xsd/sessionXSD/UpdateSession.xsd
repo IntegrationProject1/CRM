@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
            elementFormDefault="qualified">
-    <xs:element name="CreateSession">
+    <xs:element name="UpdateSession">
         <xs:complexType>
             <xs:sequence>
                 <xs:element name="SessionUUID" type="xs:dateTime"/>
