@@ -44,39 +44,39 @@ const {general_logger} = require("./utils/logger");
 
       general_logger.info('Start de consumers');
 //-------------------------------------------------------------------------------------------------------------------------------------------
-      await sendMessage("logExchange", "info", "200", "Start de consumers van CRM Service");
       await StartUserConsumer(channel, sfClient);
       await StartEventConsumer(channel, sfClient);
       await StartSessionConsumer(channel, sfClient);
-      await StartSessionParticipateConsumer(channel, sfClient);
+      // await StartSessionParticipateConsumer(channel, sfClient);
+      await sendMessage("logExchange", "info", "200", "Consumers van CRM Service gestart");
 //-------------------------------------------------------------------------------------------------------------------------------------------
-      general_logger.info('Start de CDC listeners');
         await sendMessage("logExchange", "info", "200", "Start de CDC listeners van CRM Service");
       const cdcClient = sfClient.createCDCClient();
+      general_logger.info('CDC listeners gestart');
 //-------------------------------------------------------------------------------------------------------------------------------------------
-      general_logger.info('Luister naar ContactChangeEvent');
       await sendMessage("logExchange", "info", "200", "Start de consumers (ContactChangeEvent) van CRM Service");
       cdcClient.subscribe('/data/ContactChangeEvent', async (message) => {
          await ContactCDCHandler(message, sfClient, channel);
       });
+      general_logger.info('Luisterd naar ContactChangeEvent');
 //-------------------------------------------------------------------------------------------------------------------------------------------
-      general_logger.info('Luister naar Event__ChangeEvent');
       await sendMessage("logExchange", "info", "200", "Start de consumers (Event__ChangeEvent) van CRM Service");
       cdcClient.subscribe('/data/Event__ChangeEvent', async (message) => {
          await EventCDCHandler(message, sfClient, channel);
       });
+      general_logger.info('Luisterd naar Event__ChangeEvent');
 //-------------------------------------------------------------------------------------------------------------------------------------------
-      general_logger.info('Luister naar Session__ChangeEvent');
       await sendMessage("logExchange", "info", "200", "Start de consumers (Session__ChangeEvent) van CRM Service");
       cdcClient.subscribe('/data/Session__ChangeEvent', async (message) => {
          await SessionCDCHandler(message, sfClient, channel);
       });
+      general_logger.info('Luisterd naar Session__ChangeEvent');
 //-------------------------------------------------------------------------------------------------------------------------------------------
-      general_logger.info('Luister naar SessionParticipate__ChangeEvent');
-      await sendMessage("logExchange", "info", "200", "Start de consumers (SessionParticipate__ChangeEvent) van CRM Service");
-      cdcClient.subscribe('/data/SessionParticipate__ChangeEvent', async (message) => {
-         await SessionParticipateCDCHandler(message, sfClient, channel);
-      });
+//       await sendMessage("logExchange", "info", "200", "Start de consumers (Event_Participant__ChangeEvent) van CRM Service");
+      // cdcClient.subscribe('/data/Event_Participant__ChangeEvent', async (message) => {
+      //    await SessionParticipateCDCHandler(message, sfClient, channel);
+      // });
+      // general_logger.info('Luisterd naar Event_Participant__ChangeEvent');
 //-------------------------------------------------------------------------------------------------------------------------------------------
       const heartBeatQueue = process.env.RABBITMQ_EXCHANGE_HEARTBEAT;
       const heartBeatRoutingKey = process.env.RABBITMQ_ROUTING_KEY_HEARTBEAT;
