@@ -11,7 +11,7 @@
                 <xs:element name="GuestSpeakers" minOccurs="0">
                     <xs:complexType>
                         <xs:sequence>
-                            <xs:element name="GuestSpeaker" maxOccurs="unbounded">
+                            <xs:element name="GuestSpeaker" minOccurs="0" maxOccurs="unbounded">
                                 <xs:complexType>
                                     <xs:sequence>
                                         <xs:element name="UUID" type="xs:string" minOccurs="0"/>
@@ -29,7 +29,7 @@
                 <xs:element name="RegisteredUsers" minOccurs="0">
                     <xs:complexType>
                         <xs:sequence>
-                            <xs:element name="User" maxOccurs="unbounded">
+                            <xs:element name="User" minOccurs="0" maxOccurs="unbounded">
                                 <xs:complexType>
                                     <xs:sequence>
                                         <xs:element name="UUID" type="xs:string" minOccurs="0"/>
