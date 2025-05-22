@@ -28,6 +28,7 @@ class SalesforceClient {
    async login() {
       this.conn = new jsforce.Connection({loginUrl: this.loginUrl});
       await this.conn.login(this.username, this.password + this.token);
+         this.streaming = this.conn.streaming; // nodig voor CDC voor e2e
       console.log('✅ Ingelogd bij Salesforce via jsforce');
    }
 
@@ -44,6 +45,8 @@ class SalesforceClient {
    async createUser(data) {
       const result = await this.conn.sobject('Contact').create(data);
       console.log('[CREATE] Salesforce:', result);
+        return result; // ✅ BELANGRIJK!
+
    }
 
    async updateUser(id, data) {
