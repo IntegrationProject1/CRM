@@ -2,9 +2,9 @@ require('dotenv').config();
 const amqp = require('amqplib');
 const ContactCDCHandler = require('./cdc/ContactCDCHandler');
 const EventCDCHandler = require('./cdc/EventCDCHandler');
-const SessionCDCHandler = require('./cdc/SessionCDCHandler'); // hier zo
+// const SessionCDCHandler = require('./cdc/SessionCDCHandler'); // hier zo
 // const SessionParticipateCDCHandler = require('./cdc/SessionParticipateCDCHandler');
-// const EventParticipateCDCHandler = require('./cdc/EventParticipateCDCHandler');
+const EventParticipantCDCHandler = require('./cdc/EventParticipantCDCHandler');
 const SalesforceClient = require('./salesforceClient');
 const StartUserConsumer = require('./consumers/UserConsumer');
 const StartSessionConsumer = require('./consumers/SessionConsumer');
@@ -35,10 +35,10 @@ const {general_logger} = require("./utils/logger");
 
       general_logger.info('Login in Salesforce');
       const sfClient = new SalesforceClient(
-          process.env.SALESFORCE_USERNAME,
-          process.env.SALESFORCE_PASSWORD,
-          process.env.SALESFORCE_TOKEN,
-          process.env.SALESFORCE_LOGIN_URL
+         process.env.SALESFORCE_USERNAME,
+         process.env.SALESFORCE_PASSWORD,
+         process.env.SALESFORCE_TOKEN,
+         process.env.SALESFORCE_LOGIN_URL
       );
       // general_logger.debug(sfClient);
       await sfClient.login();
@@ -51,7 +51,7 @@ const {general_logger} = require("./utils/logger");
       // await StartSessionParticipateConsumer(channel, sfClient);
       await sendMessage("info", "200", "Consumers van CRM Service gestart");
 //-------------------------------------------------------------------------------------------------------------------------------------------
-        await sendMessage("info", "200", "Start de CDC listeners van CRM Service");
+      await sendMessage("info", "200", "Start de CDC listeners van CRM Service");
       const cdcClient = sfClient.createCDCClient();
       general_logger.info('CDC listeners gestart');
 //-------------------------------------------------------------------------------------------------------------------------------------------
@@ -67,24 +67,18 @@ const {general_logger} = require("./utils/logger");
       });
       general_logger.info('Luisterd naar Event__ChangeEvent');
 //-------------------------------------------------------------------------------------------------------------------------------------------
-//       await sendMessage("info", "200", "Start de consumers (Session__ChangeEvent) van CRM Service");
-//       cdcClient.subscribe('/data/Session__ChangeEvent', async (message) => {
-//          await SessionCDCHandler(message, sfClient, channel);
-//       });
-//       general_logger.info('Luisterd naar Session__ChangeEvent');
-
+      cdcClient.subscribe('/data/Event_Participant__ChangeEvent', async (message) => {
+         await EventParticipantCDCHandler(message, sfClient, channel);
+      });
+      await sendMessage("logExchange", "info", "200", "Start de consumers (Event_Participant__ChangeEvent) van CRM Service");
+      general_logger.info('Luisterd naar Event_Participant__ChangeEvent');
+//-------------------------------------------------------------------------------------------------------------------------------------------
       // Activeer de CDC listener voor sessies
       await sendMessage("info", "200", "Start Session CDC Listener");
       cdcClient.subscribe('/data/Session__ChangeEvent', async (message) => {
          await SessionCDCHandler(message, sfClient, channel);
       });
       general_logger.info('Luistert naar Session__ChangeEvent'); // ✅ Spelling corrigeren
-//-------------------------------------------------------------------------------------------------------------------------------------------
-//       await sendMessage("info", "200", "Start de consumers (Event_Participant__ChangeEvent) van CRM Service");
-      // cdcClient.subscribe('/data/Event_Participant__ChangeEvent', async (message) => {
-      //    await SessionParticipateCDCHandler(message, sfClient, channel);
-      // });
-      // general_logger.info('Luisterd naar Event_Participant__ChangeEvent');
 //-------------------------------------------------------------------------------------------------------------------------------------------
       const heartBeatQueue = process.env.RABBITMQ_EXCHANGE_HEARTBEAT;
       const heartBeatRoutingKey = process.env.RABBITMQ_ROUTING_KEY_HEARTBEAT;
