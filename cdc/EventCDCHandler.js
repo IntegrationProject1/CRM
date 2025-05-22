@@ -61,7 +61,7 @@ module.exports = async function EventCDCHandler(message, sfClient, RMQChannel) {
                CreateEvent: {
                   EventUUID: UUID,
                   EventName: cdcObject.Name,
-                  Description: cdcObject.Description__c,
+                  EventDescription: cdcObject.Description__c,
                   StartDateTime: cdcObject.StartDateTime__c,
                   EndDateTime: cdcObject.EndDateTime__c,
                   EventLocation: cdcObject.Location__c,
@@ -87,7 +87,7 @@ module.exports = async function EventCDCHandler(message, sfClient, RMQChannel) {
                UpdateEvent: {
                   EventUUID: updatedRecord.UUID__c,
                   ...(cdcObject.Name && { EventName: cdcObject.Name }),
-                  ...(cdcObject.Description__c && { Description: cdcObject.Description__c }),
+                  ...(cdcObject.Description__c && { EventDescription: cdcObject.Description__c }),
                   ...(cdcObject.StartDateTime__c && { StartDateTime: cdcObject.StartDateTime__c }),
                   ...(cdcObject.EndDateTime__c && { EndDateTime: cdcObject.EndDateTime__c }),
                   ...(cdcObject.Location__c && { EventLocation: cdcObject.Location__c }),
