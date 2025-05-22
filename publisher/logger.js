@@ -44,7 +44,7 @@ async function sendLog(channel, exchangeName, serviceName = 'CRM_Service', statu
         return;
     }
 
-    channel.publish(exchangeName, '', Buffer.from(xml));
+    channel.publish(exchangeName, 'controlroom.log.event', Buffer.from(xml));
     logger_logger.debug('Sending message', channel, exchangeName, serviceName, status_level);
 }
 
@@ -58,7 +58,7 @@ async function sendLog(channel, exchangeName, serviceName = 'CRM_Service', statu
  * @example
  * sendMessage('logExchange', 'info', '200', 'Heartbeat message');
  */
-async function sendMessage(exchangeName, status_level, code, message) {
+async function sendMessage(status_level, code, message) {
     try {
         const conn    = await amqp.connect({
             protocol: 'amqp',
@@ -68,6 +68,7 @@ async function sendMessage(exchangeName, status_level, code, message) {
             password: process.env.RABBITMQ_PASSWORD,
             vhost:    '/'
         });
+        let exchangeName ='log_monitoring';
         const channel = await conn.createChannel();
         await sendLog(channel, exchangeName, 'CRM_Service', status_level, code, message);
     } catch (error) {
