@@ -138,9 +138,9 @@ module.exports = async function EventCDCHandler(message, sfClient, RMQChannel) {
       await RMQChannel.assertExchange(exchangeName, 'topic', { durable: true });
 
       const routingKeys = [
-         // `frontend.event.${action.toLowerCase()}`,
+         `frontend.event.${action.toLowerCase()}`,
          // `facturatie.event.${action.toLowerCase()}`,
-         // `kassa.event.${action.toLowerCase()}`,
+         `kassa.event.${action.toLowerCase()}`,
          `planning.event.${action.toLowerCase()}`
       ];
 
