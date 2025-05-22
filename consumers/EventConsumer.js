@@ -102,7 +102,7 @@ module.exports = async function StartEventConsumer(channel, salesforceClient) {
                   salesForceMsg = {
                      "UUID__c": rabbitMQMsg.EventUUID,
                      "Name": rabbitMQMsg.EventName,
-                     "Description__c": rabbitMQMsg.EventDescription || "",
+                     "Description__c": rabbitMQMsg.Description || "",
                      "StartDateTime__c": rabbitMQMsg.StartDateTime || "",
                      "EndDateTime__c": rabbitMQMsg.EndDateTime || "",
                      "Location__c": rabbitMQMsg.EventLocation || "",
@@ -122,12 +122,12 @@ module.exports = async function StartEventConsumer(channel, salesforceClient) {
             case "update":
                try {
                   salesForceMsg = {
-                     ...(rabbitMQMsg.Name && {"Name": rabbitMQMsg.Name}),
+                     ...(rabbitMQMsg.EventName && {"Name": rabbitMQMsg.EventName}),
                      ...(rabbitMQMsg.Description && {"Description__c": rabbitMQMsg.Description}),
                      ...(rabbitMQMsg.StartDateTime && {"StartDateTime__c": rabbitMQMsg.StartDateTime}),
                      ...(rabbitMQMsg.EndDateTime && {"EndDateTime__c": rabbitMQMsg.EndDateTime}),
                      ...(rabbitMQMsg.Location && {"Location__c": rabbitMQMsg.Location}),
-                     ...(rabbitMQMsg.Organiser && {"Organiser__c": rabbitMQMsg.Organiser}),
+                     ...(rabbitMQMsg.Organisator && {"Organiser__c": rabbitMQMsg.Organisator}),
                      ...(rabbitMQMsg.EventType && {"EventType__c": rabbitMQMsg.EventType})
                   };
 
