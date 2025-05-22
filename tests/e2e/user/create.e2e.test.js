@@ -5,23 +5,22 @@ const { startCDCListener, stopCDCListener } = require('../../../cdc/cdcListener'
 const { xmlToJson } = require('../../../utils/xmlJsonTranslator');
 
 process.env.IGNORE_CDC_API_ORIGIN = 'true';
-
-jest.setTimeout(25000); // ⏱️ Extra tijd voor CI
+jest.setTimeout(30000);
 
 const waitForRabbitMQ = async (amqpUrl, retries = 5, delay = 2000) => {
   for (let i = 0; i < retries; i++) {
     try {
       return await amqp.connect(amqpUrl);
-    } catch (err) {
-      console.warn(`Wachten op RabbitMQ (${i + 1}/${retries})...`);
+    } catch {
+      console.warn(`⏳ Wachten op RabbitMQ (${i + 1}/${retries})...`);
       await new Promise(res => setTimeout(res, delay));
     }
   }
   throw new Error('RabbitMQ niet bereikbaar');
 };
 
-describe('🧪 E2E – User CREATE flow', () => {
-  let connection, channel, sfClient;
+describe('🧪 E2E – User UPDATE flow', () => {
+  let connection, channel, sfClient, createdId;
 
   beforeAll(async () => {
     const amqpUrl = `amqp://${process.env.RABBITMQ_USERNAME}:${process.env.RABBITMQ_PASSWORD}@${process.env.RABBITMQ_HOST}:${process.env.RABBITMQ_PORT}`;
@@ -32,9 +31,9 @@ describe('🧪 E2E – User CREATE flow', () => {
 
     const services = ['frontend', 'facturatie', 'kassa'];
     for (const service of services) {
-      const queue = `test_user_create_${service}`;
+      const queue = `test_user_update_${service}`;
       await channel.assertQueue(queue, { durable: false });
-      await channel.bindQueue(queue, 'user', `${service}.user.create`);
+      await channel.bindQueue(queue, 'user', `${service}.user.update`);
       await channel.purgeQueue(queue);
     }
 
@@ -46,48 +45,57 @@ describe('🧪 E2E – User CREATE flow', () => {
     );
     await sfClient.login();
     await startCDCListener(sfClient, channel);
-  });
 
-  it('📤 publiceert correcte CREATE payload naar alle services', async () => {
-    const queue = 'test_user_create_frontend';
-    const uniqueEmail = `john${Date.now()}@example.com`;
-
-    await sfClient.createUser({
-      FirstName: 'John',
-      LastName: 'Doe',
+    const uniqueEmail = `update-${Date.now()}@example.com`;
+    const result = await sfClient.conn.sobject('Contact').create({
+      FirstName: 'PreUpdate',
+      LastName: 'Test',
       Email: uniqueEmail,
-      Phone: '123456789',
-      Password__c: 'hashed123'
+      Phone: '0470000000',
+      Password__c: 'init1234',                        // ✅ verplicht veld
+      TimeOfAction__c: new Date().toISOString()       // ✅ verplicht veld
     });
 
-    const message = await new Promise((resolve, reject) => {
+    createdId = result.id;
+  });
+
+  it('📤 publiceert correcte UPDATE payload naar alle services', async () => {
+    const queue = 'test_user_update_frontend';
+
+    const consumePromise = new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject('⏰ Geen UPDATE-bericht ontvangen'), 15000);
+
       channel.consume(queue, async (msg) => {
         if (msg) {
+          clearTimeout(timeout);
           try {
             const parsed = await xmlToJson(msg.content.toString());
             channel.ack(msg);
             resolve(parsed);
           } catch (err) {
-            console.error('❌ Fout bij parsen XML naar JSON:', err.message);
-            reject(err);
+            reject(`❌ JSON parse error: ${err.message}`);
           }
         }
       }, { noAck: false });
-
-      setTimeout(() => reject('⏰ Geen bericht ontvangen binnen de tijd'), 15000);
     });
 
+    await sfClient.conn.sobject('Contact').update({
+      Id: createdId,
+      FirstName: 'PostUpdate'
+    });
+
+    const message = await consumePromise;
+
     expect(message).toHaveProperty('UserMessage');
-    expect(message.UserMessage.ActionType).toBe('CREATE');
+    expect(message.UserMessage.ActionType).toBe('UPDATE');
     expect(message.UserMessage.UUID).toBeDefined();
     expect(message.UserMessage.TimeOfAction).toBeDefined();
   });
 
   afterAll(async () => {
     await stopCDCListener();
-    await new Promise(resolve => setTimeout(resolve, 500)); // laat laatste async logs afvloeien
+    await new Promise(resolve => setTimeout(resolve, 500));
     if (channel) await channel.close();
     if (connection) await connection.close();
-    
   });
 });
