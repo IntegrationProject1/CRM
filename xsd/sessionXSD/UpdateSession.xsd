@@ -4,15 +4,35 @@
     <xs:element name="UpdateSession">
         <xs:complexType>
             <xs:sequence>
-                <xs:element name="UUID" type="xs:dateTime"/>
-                <xs:element name="FieldsToUpdate" minOccurs="1">
+                <xs:element name="SessionUUID" type="xs:dateTime"/>
+                <xs:element name="EventUUID" type="xs:string"/>
+                <xs:element name="SessionName" type="xs:string"/>
+                <xs:element name="SessionDescription" type="xs:string" minOccurs="0"/>
+                <xs:element name="GuestSpeakers" minOccurs="0">
                     <xs:complexType>
                         <xs:sequence>
-                            <xs:element name="Field" maxOccurs="unbounded">
+                            <xs:element name="GuestSpeaker" minOccurs="0" maxOccurs="unbounded">
                                 <xs:complexType>
                                     <xs:sequence>
-                                        <xs:element name="Name" type="xs:string"/>
-                                        <xs:element name="NewValue" type="xs:string"/>
+                                        <xs:element name="email" type="xs:string" minOccurs="0"/>
+                                    </xs:sequence>
+                                </xs:complexType>
+                            </xs:element>
+                        </xs:sequence>
+                    </xs:complexType>
+                </xs:element>
+                <xs:element name="Capacity" type="xs:positiveInteger" minOccurs="0"/>
+                <xs:element name="StartDateTime" type="xs:dateTime" minOccurs="0"/>
+                <xs:element name="EndDateTime" type="xs:dateTime" minOccurs="0"/>
+                <xs:element name="SessionLocation" type="xs:string" minOccurs="0"/>
+                <xs:element name="SessionType" type="xs:string" minOccurs="0"/>
+                <xs:element name="RegisteredUsers" minOccurs="0">
+                    <xs:complexType>
+                        <xs:sequence>
+                            <xs:element name="User" minOccurs="0" maxOccurs="unbounded">
+                                <xs:complexType>
+                                    <xs:sequence>
+                                        <xs:element name="email" type="xs:string" minOccurs="0"/>
                                     </xs:sequence>
                                 </xs:complexType>
                             </xs:element>
@@ -22,5 +42,5 @@
             </xs:sequence>
         </xs:complexType>
     </xs:element>
-</xs:schema>
 
+</xs:schema>

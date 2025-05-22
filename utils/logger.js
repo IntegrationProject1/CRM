@@ -49,8 +49,13 @@ function createLogger(name, level = 'info', logFilePath) {
     return pino({
         name: name,
         level: level.toLowerCase(), // Normalize level to lowercase
-        mixin() {
-            return { service: 'CRM_Service' };
+        // mixin() {
+        //     return { service: 'CRM_Service' };
+        // },
+        // replace parts of password with asterisks and remove sensitive data
+        redact: {
+            paths: ['password', 'token'],
+            censor: '*****',
         },
         timestamp: pino.stdTimeFunctions.isoTime,
     }, createTransport(logFilePath, level));
@@ -137,7 +142,15 @@ const event_logger = wrapLoggerWithStatusCode(
 const session_logger = wrapLoggerWithStatusCode(
     createLogger('session', process.env.LOG_LEVEL, process.env.SESSION_LOG_FILE)
 );
-
+/**
+ * Logger for other objects.
+ * (e.g., other objects)
+ * @type {Object}
+ * @example
+ * logger_logger.info('Other object created');
+ * @example
+ * logger_logger.error('Other object error', "500");
+ */
 const logger_logger = wrapLoggerWithStatusCode(
     createLogger('logger', process.env.LOG_LEVEL, process.env.LOGGER_LOG_FILE)
 );
