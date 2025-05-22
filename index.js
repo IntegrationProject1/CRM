@@ -2,7 +2,7 @@ require('dotenv').config();
 const amqp = require('amqplib');
 const ContactCDCHandler = require('./cdc/ContactCDCHandler');
 const EventCDCHandler = require('./cdc/EventCDCHandler');
-// const SessionCDCHandler = require('./cdc/SessionCDCHandler'); // hier zo
+const SessionCDCHandler = require('./cdc/SessionCDCHandler'); // hier zo
 // const SessionParticipateCDCHandler = require('./cdc/SessionParticipateCDCHandler');
 // const EventParticipateCDCHandler = require('./cdc/EventParticipateCDCHandler');
 const SalesforceClient = require('./salesforceClient');
@@ -47,7 +47,7 @@ const {general_logger} = require("./utils/logger");
 //-------------------------------------------------------------------------------------------------------------------------------------------
       await StartUserConsumer(channel, sfClient);
       await StartEventConsumer(channel, sfClient);
-      // await StartSessionConsumer(channel, sfClient);
+      await StartSessionConsumer(channel, sfClient); // hier zo
       // await StartSessionParticipateConsumer(channel, sfClient);
       await sendMessage("info", "200", "Consumers van CRM Service gestart");
 //-------------------------------------------------------------------------------------------------------------------------------------------
@@ -72,6 +72,13 @@ const {general_logger} = require("./utils/logger");
 //          await SessionCDCHandler(message, sfClient, channel);
 //       });
 //       general_logger.info('Luisterd naar Session__ChangeEvent');
+
+      // Activeer de CDC listener voor sessies
+      await sendMessage("info", "200", "Start Session CDC Listener");
+      cdcClient.subscribe('/data/Session__ChangeEvent', async (message) => {
+         await SessionCDCHandler(message, sfClient, channel);
+      });
+      general_logger.info('Luistert naar Session__ChangeEvent'); // ✅ Spelling corrigeren
 //-------------------------------------------------------------------------------------------------------------------------------------------
 //       await sendMessage("info", "200", "Start de consumers (Event_Participant__ChangeEvent) van CRM Service");
       // cdcClient.subscribe('/data/Event_Participant__ChangeEvent', async (message) => {
