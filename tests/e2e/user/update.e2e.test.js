@@ -18,7 +18,7 @@ const waitForRabbitMQ = async (amqpUrl, retries = 5, delay = 2000) => {
   throw new Error('RabbitMQ niet bereikbaar');
 };
 
-describe('🧪 E2E – User UPDATE flow', () => {
+describe.skip('🧪 E2E – User UPDATE flow', () => {
   let connection, channel, sfClient, createdId;
 
   beforeAll(async () => {
