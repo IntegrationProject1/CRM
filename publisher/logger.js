@@ -50,7 +50,6 @@ async function sendLog(channel, exchangeName, serviceName = 'CRM_Service', statu
 
 /**
  * Sends a message to a RabbitMQ exchange.
- * @param {string} exchangeName - Name of the exchange to publish to.
  * @param {string} status_level - Status level (e.g., 'info', 'error').
  * @param {string} code - Code for the message.
  * @param {string} message - Message content.
