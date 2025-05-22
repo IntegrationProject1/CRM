@@ -4,7 +4,9 @@
     <xs:element name="DeleteEvent">
         <xs:complexType>
             <xs:sequence>
-                <xs:element name="UUID" type="xs:string"/>
+                <xs:element name="ActionType" type="xs:string"/>
+                <xs:element name="EventUUID" type="xs:dateTime"/>
+                <xs:element name="TimeOfAction" type="xs:dateTime"/>
             </xs:sequence>
         </xs:complexType>
     </xs:element>

@@ -40,6 +40,8 @@ class SalesforceClient {
       return this.conn.streaming.createClient();
    }
 
+   // ----------- USER (Contact) CRUD ------------
+
    async createUser(data) {
       const result = await this.conn.sobject('Contact').create(data);
       console.log('[CREATE] Salesforce:', result);
@@ -55,6 +57,24 @@ class SalesforceClient {
    async deleteUser(id) {
       const result = await this.conn.sobject('Contact').destroy(id);
       console.log('[DELETE] Salesforce:', result);
+      // ----------- EVENT (Event__c) CRUD ------------
+   }
+   async createEvent(data) {
+      const result = await this.conn.sobject('Event__c').create(data);
+      console.log('[CREATE] Salesforce Event:', result);
+      return result;
+   }
+
+   async updateEvent(id, data) {
+      const result = await this.conn.sobject('Event__c').update({Id: id, ...data});
+      console.log('[UPDATE] Salesforce Event:', result);
+      return result;
+   }
+
+   async deleteEvent(id) {
+      const result = await this.conn.sobject('Event__c').destroy(id);
+      console.log('[DELETE] Salesforce Event:', result);
+      return result;
    }
 
    /**

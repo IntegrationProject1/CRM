@@ -44,13 +44,12 @@ async function sendLog(channel, exchangeName, serviceName = 'CRM_Service', statu
         return;
     }
 
-    channel.publish(exchangeName, '', Buffer.from(xml));
-    logger_logger.info('Sending message', channel, exchangeName, serviceName, status_level);
+    channel.publish(exchangeName, 'controlroom.log.event', Buffer.from(xml));
+    logger_logger.debug('Sending message', channel, exchangeName, serviceName, status_level);
 }
 
 /**
  * Sends a message to a RabbitMQ exchange.
- * @param {string} exchangeName - Name of the exchange to publish to.
  * @param {string} status_level - Status level (e.g., 'info', 'error').
  * @param {string} code - Code for the message.
  * @param {string} message - Message content.
@@ -58,7 +57,7 @@ async function sendLog(channel, exchangeName, serviceName = 'CRM_Service', statu
  * @example
  * sendMessage('logExchange', 'info', '200', 'Heartbeat message');
  */
-async function sendMessage(exchangeName, status_level, code, message) {
+async function sendMessage(status_level, code, message) {
     try {
         const conn    = await amqp.connect({
             protocol: 'amqp',
@@ -68,6 +67,7 @@ async function sendMessage(exchangeName, status_level, code, message) {
             password: process.env.RABBITMQ_PASSWORD,
             vhost:    '/'
         });
+        let exchangeName ='log_monitoring';
         const channel = await conn.createChannel();
         await sendLog(channel, exchangeName, 'CRM_Service', status_level, code, message);
     } catch (error) {
@@ -76,6 +76,5 @@ async function sendMessage(exchangeName, status_level, code, message) {
 }
 
 module.exports = {
-    sendMessage,
-    sendLog
+    sendMessage
 };

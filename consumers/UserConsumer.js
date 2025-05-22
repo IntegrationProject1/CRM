@@ -4,6 +4,7 @@
  */
 
 const xmlJsonTranslator = require("../utils/xmlJsonTranslator");
+const { addressToJson } = require("../utils/adressTranslator");
 
 /**
  * Start de UserConsumer om berichten van RabbitMQ-queues te verwerken.
@@ -78,25 +79,38 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
          switch (action) {
             case "create":
                try {
+                  const businessData = objectData.Business || {};
+                  const realAddress = addressToJson(businessData.RealAddress || "");
+                  const facturationAddress = addressToJson(businessData.FacturationAddress || "");
+
                   JSONMsg = {
                      "UUID__c": objectData.UUID,
-                     "TimeOfAction__c": objectData.TimeOfAction__c,
+                     "TimeOfAction__c": objectData.TimeOfAction,
                      "Password__c": objectData.EncryptedPassword || "",
                      "FirstName": objectData.FirstName || "",
                      "LastName": objectData.LastName || "",
-                     "Phone": objectData.Phone || "",
-                     "Email": objectData.Email || "",
-                     // "Business": { // Is nog niet in SalesForce  verwerkt
-                     //    "BusinessName": objectData.BusinessName || "",
-                     //    "BusinessEmail": objectData.BusinessEmail || "",
-                     //    "RealAddress": objectData.RealAddress || "",
-                     //    "BTWNumber": objectData.BTWNumber || "",
-                     //    "FacturationAddress": objectData.FacturationAddress || ""
-                     // }
+                     "Phone": objectData.PhoneNumber || "",
+                     "Email": objectData.EmailAddress || "",
+                     // Business velden
+                     "BusinessName__c": businessData.BusinessName || "",
+                     "BusinessEmail__c": businessData.BusinessEmail || "",
+                     "BTWNumber__c": businessData.BTWNumber || "",
+                     // RealAddress mapping
+                     "MailingStreet": `${realAddress.Street}`.trim(),
+                     "MailingCity": realAddress.City || "",
+                     "MailingState": realAddress.State || "",
+                     "MailingPostalCode": realAddress.PostalCode || "",
+                     "MailingCountry": realAddress.Country || "",
+                     // FacturationAddress mapping
+                     "OtherStreet": `${facturationAddress.Street}`.trim(),
+                     "OtherCity": facturationAddress.City || "",
+                     "OtherState": facturationAddress.State || "",
+                     "OtherPostalCode": facturationAddress.PostalCode || "",
+                     "OtherCountry": facturationAddress.Country || ""
                   };
 
                   await salesforceClient.createUser(JSONMsg);
-                  console.log("✅ Gebruiker aangemaakt in Salesforce");
+                  console.log("✅ Gebruiker mét business data aangemaakt");
                } catch (err) {
                   channel.nack(msg, false, false);
                   console.error("❌ Fout bij create:", err.message);
@@ -106,17 +120,36 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
 
             case "update":
                try {
+                  const businessData = objectData.Business || {};
+                  const realAddress = addressToJson(businessData.RealAddress || "");
+                  const facturationAddress = addressToJson(businessData.FacturationAddress || "");
+
                   JSONMsg = {
-                     "TimeOfAction__c": objectData.TimeOfAction__c,
+                     "TimeOfAction__c": objectData.TimeOfAction,
                      "Password__c": objectData.EncryptedPassword || "",
                      "FirstName": objectData.FirstName || "",
                      "LastName": objectData.LastName || "",
-                     "Phone": objectData.Phone || "",
-                     "Email": objectData.Email || "",
+                     "Phone": objectData.PhoneNumber || "",
+                     "Email": objectData.EmailAddress || "",
+                     // Business velden
+                     "BusinessName__c": businessData.BusinessName || "",
+                     "BusinessEmail__c": businessData.BusinessEmail || "",
+                     "BTWNumber__c": businessData.BTWNumber || "",
+                     // Adres updates
+                     "MailingStreet": `${realAddress.Street}`.trim(),
+                     "MailingCity": realAddress.City || "",
+                     "MailingState": realAddress.State || "",
+                     "MailingPostalCode": realAddress.PostalCode || "",
+                     "MailingCountry": realAddress.Country || "",
+                     "OtherStreet": `${facturationAddress.Street}`.trim(),
+                     "OtherCity": facturationAddress.City || "",
+                     "OtherState": facturationAddress.State || "",
+                     "OtherPostalCode": facturationAddress.PostalCode || "",
+                     "OtherCountry": facturationAddress.Country || ""
                   };
 
                   await salesforceClient.updateUser(SalesforceObjId, JSONMsg);
-                  console.log("✅ Gebruiker geüpdatet in Salesforce");
+                  console.log("✅ Gebruiker geüpdatet met business data");
                } catch (err) {
                   channel.nack(msg, false, false);
                   console.error("❌ Fout bij update:", err.message);
