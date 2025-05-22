@@ -110,7 +110,7 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
                   }
                }
             };
-            console.warn('test create', JSONMsg);
+            // console.warn('test create', JSONMsg);
             xsdPath = './xsd/userXSD/UserCreate.xsd';
             break;
 

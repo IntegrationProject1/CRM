@@ -40,7 +40,7 @@ const {general_logger} = require("./utils/logger");
           process.env.SALESFORCE_TOKEN,
           process.env.SALESFORCE_LOGIN_URL
       );
-      general_logger.debug(sfClient);
+      // general_logger.debug(sfClient);
       await sfClient.login();
 
       general_logger.info('Start de consumers');
