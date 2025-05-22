@@ -43,6 +43,8 @@ class SalesforceClient {
    async createUser(data) {
       const result = await this.conn.sobject('Contact').create(data);
       console.log('[CREATE] Salesforce:', result);
+        return result; // ✅ BELANGRIJK!
+
    }
 
    async updateUser(id, data) {
