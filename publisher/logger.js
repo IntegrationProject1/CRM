@@ -76,6 +76,5 @@ async function sendMessage(status_level, code, message) {
 }
 
 module.exports = {
-    sendMessage,
-    sendLog
+    sendMessage
 };

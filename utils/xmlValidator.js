@@ -20,6 +20,9 @@ const path = require('path');
 
 function validateXml(xmlString, xsdPath) {
     try {
+        if (!fs.existsSync(xsdPath)) {
+            throw new Error(`XSD file not found at ${xsdPath}`);
+        }
         const xsdContent = fs.readFileSync(path.resolve(xsdPath), 'utf-8');
         const xsdDoc = libxmljs.parseXml(xsdContent);
         const xmlDoc = libxmljs.parseXml(xmlString);
@@ -34,7 +37,6 @@ function validateXml(xmlString, xsdPath) {
         return false;
     }
 }
-
 module.exports = {
     validateXml
 };
