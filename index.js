@@ -2,7 +2,7 @@ require('dotenv').config();
 const amqp = require('amqplib');
 const ContactCDCHandler = require('./cdc/ContactCDCHandler');
 const EventCDCHandler = require('./cdc/EventCDCHandler');
-const SessionCDCHandler = require('./cdc/SessionCDCHandler');
+// const SessionCDCHandler = require('./cdc/SessionCDCHandler'); // hier zo
 // const SessionParticipateCDCHandler = require('./cdc/SessionParticipateCDCHandler');
 // const EventParticipateCDCHandler = require('./cdc/EventParticipateCDCHandler');
 const SalesforceClient = require('./salesforceClient');
@@ -47,7 +47,7 @@ const {general_logger} = require("./utils/logger");
 //-------------------------------------------------------------------------------------------------------------------------------------------
       await StartUserConsumer(channel, sfClient);
       await StartEventConsumer(channel, sfClient);
-      await StartSessionConsumer(channel, sfClient);
+      // await StartSessionConsumer(channel, sfClient);
       // await StartSessionParticipateConsumer(channel, sfClient);
       await sendMessage("info", "200", "Consumers van CRM Service gestart");
 //-------------------------------------------------------------------------------------------------------------------------------------------
@@ -85,7 +85,7 @@ const {general_logger} = require("./utils/logger");
       general_logger.debug(heartBeatRoutingKey);
 //-------------------------------------------------------------------------------------------------------------------------------------------
       general_logger.info('Start de heartbeat publisher');
-      await sendMessage("info", "200", "Start de heartbeat publisher van CRM Service");
+      await sendMessage("info", "200", "Start de heartbeat publisher van CRM Service"); // deze hier
       await startHeartbeat(channel, heartBeatQueue, heartBeatRoutingKey, 'CRM_Service');
 //-------------------------------------------------------------------------------------------------------------------------------------------
    } catch (err) {

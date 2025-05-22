@@ -16,7 +16,7 @@ function generateMicroDateTime() {
 module.exports = async function SessionCDCHandler(message, sfClient, RMQChannel) {
     const { ChangeEventHeader, ...cdcObject } = message.payload;
 
-    if (ChangeEventHeader.changeOrigin === "com/salesforce/api/rest/50.0") {
+    if (ChangeEventHeader.changeOrigin.includes("com/salesforce/api/rest")) {
         console.log("🚫 Salesforce API call detected, skipping action.");
         return;
     }
@@ -39,39 +39,21 @@ module.exports = async function SessionCDCHandler(message, sfClient, RMQChannel)
                     .update({ Id: recordId, UUID__c: UUID });
                 console.log("✅ Session UUID updated:", UUID);
 
-                // Get related event UUID
-                const event = await sfClient.sObject('Event__c')
-                    .select('UUID__c')
-                    .where({ Id: cdcObject.Event__c })
-                    .first();
-
                 JSONMsg = {
                     CreateSession: {
                         SessionUUID: UUID,
-                        EventUUID: event?.UUID__c || '',
                         SessionName: cdcObject.Name,
-                        SessionDescription: cdcObject.Description__c,
-                        GuestSpeakers: cdcObject.GuestSpeaker__c ? {
-                            GuestSpeaker: cdcObject.GuestSpeaker__c.split(';').map(email => ({
-                                email: email.trim()
-                            }))
-                        } : null,
-                        Capacity: parseInt(cdcObject.Capacity__c) || 0,
+                        Description: cdcObject.Description__c,
                         StartDateTime: cdcObject.SessionStart__c,
                         EndDateTime: cdcObject.SessionEnd__c,
-                        SessionLocation: cdcObject.Location__c,
-                        SessionType: cdcObject.Type__c,
-                        RegisteredUsers: cdcObject.Session_Participant__c ? {
-                            User: await Promise.all(
-                                cdcObject.Session_Participant__c.split(';').map(async userId => {
-                                    const user = await sfClient.sObject('User')
-                                        .select('Email')
-                                        .where({ Id: userId.trim() })
-                                        .first();
-                                    return { email: user?.Email || '' };
-                                })
-                            )
-                        } : null
+                        Location: cdcObject.Location__c,
+                        Instructor: cdcObject.Instructor__c,
+                        Capacity: cdcObject.Capacity__c,
+                        Status: cdcObject.Status__c,
+                        RelatedEventUUID: cdcObject.Event__c,
+                        RegisteredUsers: {
+                            User: []
+                        }
                     }
                 };
                 xsdPath = './xsd/sessionsXSD/CreateSession.xsd';
@@ -81,43 +63,17 @@ module.exports = async function SessionCDCHandler(message, sfClient, RMQChannel)
                 const updatedSession = await sfClient.sObject('Session__c')
                     .retrieve(recordId);
 
-                const updatedEvent = cdcObject.Event__c ?
-                    await sfClient.sObject('Event__c')
-                        .select('UUID__c')
-                        .where({ Id: cdcObject.Event__c })
-                        .first() : null;
-
                 JSONMsg = {
                     UpdateSession: {
                         SessionUUID: updatedSession.UUID__c,
                         ...(cdcObject.Name && { SessionName: cdcObject.Name }),
-                        ...(cdcObject.Description__c && { SessionDescription: cdcObject.Description__c }),
-                        ...(cdcObject.GuestSpeaker__c && {
-                            GuestSpeakers: {
-                                GuestSpeaker: cdcObject.GuestSpeaker__c.split(';').map(email => ({
-                                    email: email.trim()
-                                }))
-                            }
-                        }),
-                        ...(cdcObject.Capacity__c && { Capacity: parseInt(cdcObject.Capacity__c) }),
+                        ...(cdcObject.Description__c && { Description: cdcObject.Description__c }),
                         ...(cdcObject.SessionStart__c && { StartDateTime: cdcObject.SessionStart__c }),
                         ...(cdcObject.SessionEnd__c && { EndDateTime: cdcObject.SessionEnd__c }),
-                        ...(cdcObject.Location__c && { SessionLocation: cdcObject.Location__c }),
-                        ...(cdcObject.Type__c && { SessionType: cdcObject.Type__c }),
-                        ...(cdcObject.Event__c && { EventUUID: updatedEvent?.UUID__c }),
-                        ...(cdcObject.Session_Participant__c && {
-                            RegisteredUsers: {
-                                User: await Promise.all(
-                                    cdcObject.Session_Participant__c.split(';').map(async userId => {
-                                        const user = await sfClient.sObject('User')
-                                            .select('Email')
-                                            .where({ Id: userId.trim() })
-                                            .first();
-                                        return { email: user?.Email || '' };
-                                    })
-                                )
-                            }
-                        })
+                        ...(cdcObject.Location__c && { Location: cdcObject.Location__c }),
+                        ...(cdcObject.Instructor__c && { Instructor: cdcObject.Instructor__c }),
+                        ...(cdcObject.Capacity__c && { Capacity: cdcObject.Capacity__c }),
+                        ...(cdcObject.Status__c && { Status: cdcObject.Status__c })
                     }
                 };
                 xsdPath = './xsd/sessionsXSD/UpdateSession.xsd';
@@ -155,7 +111,12 @@ module.exports = async function SessionCDCHandler(message, sfClient, RMQChannel)
         const exchangeName = 'session';
         await RMQChannel.assertExchange(exchangeName, 'topic', { durable: true });
 
-        const routingKeys = [`session.${action.toLowerCase()}`];
+        const routingKeys = [
+            // `frontend.session.${action.toLowerCase()}`,
+            // `kassa.session.${action.toLowerCase()}`,
+            `planning.session.${action.toLowerCase()}`
+        ];
+
         for (const routingKey of routingKeys) {
             RMQChannel.publish(exchangeName, routingKey, Buffer.from(xmlMessage));
             console.log(`📤 Session message routed to ${exchangeName} (${routingKey})`);

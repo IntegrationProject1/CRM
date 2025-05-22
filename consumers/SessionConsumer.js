@@ -1,16 +1,10 @@
 /**
  * @module SessionConsumer
- * @description Beheert de verwerking van berichten uit RabbitMQ-queues voor het aanmaken, bijwerken en verwijderen van sessies in Salesforce.
+ * @description Beheert de verwerking van berichten uit RabbitMQ-queues voor sessies in Salesforce.
  */
 
 const xmlJsonTranslator = require("../utils/xmlJsonTranslator");
 
-/**
- * Start de SessionConsumer om berichten van RabbitMQ-queues te verwerken.
- * @param {Object} channel - Het RabbitMQ-kanaal voor het consumeren van berichten.
- * @param {Object} salesforceClient - De Salesforce-client voor interactie met Salesforce.
- * @returns {Promise<void>} - Een belofte die wordt vervuld wanneer de consumer is gestart.
- */
 module.exports = async function StartSessionConsumer(channel, salesforceClient) {
 
    function capitalize(s) {
@@ -20,7 +14,7 @@ module.exports = async function StartSessionConsumer(channel, salesforceClient) 
    const queues = ["create", "update", "delete"];
 
    for (const action of queues) {
-      await channel.assertQueue(`crm_session_${action}`, {durable: true});
+      await channel.assertQueue(`crm_session_${action}`, { durable: true });
 
       console.log("Luisteren op queue:", `crm_session_${action}`);
       await channel.consume(`crm_session_${action}`, async (msg) => {
@@ -52,7 +46,7 @@ module.exports = async function StartSessionConsumer(channel, salesforceClient) 
             // Zoek Salesforce ID via UUID
             const query = salesforceClient.sObject("Session__c")
                 .select("Id")
-                .where({UUID__c: rabbitMQMsg.SessionUUID})
+                .where({ UUID__c: rabbitMQMsg.SessionUUID })
                 .limit(1);
 
             let result;
@@ -76,47 +70,26 @@ module.exports = async function StartSessionConsumer(channel, salesforceClient) 
          switch (action) {
             case "create":
                try {
-                  // Zoek gerelateerd event
+                  // Relatie met Event
                   const eventQuery = await salesforceClient.sObject("Event__c")
                       .select("Id")
-                      .where({UUID__c: rabbitMQMsg.EventUUID})
+                      .where({ UUID__c: rabbitMQMsg.RelatedEventUUID })
                       .limit(1);
                   const eventResult = await eventQuery.run();
 
                   salesForceMsg = {
                      "UUID__c": rabbitMQMsg.SessionUUID,
                      "Name": rabbitMQMsg.SessionName,
-                     "Description__c": rabbitMQMsg.SessionDescription || "",
+                     "Description__c": rabbitMQMsg.Description || "",
                      "SessionStart__c": rabbitMQMsg.StartDateTime,
                      "SessionEnd__c": rabbitMQMsg.EndDateTime,
-                     "Location__c": rabbitMQMsg.SessionLocation,
+                     "Location__c": rabbitMQMsg.Location,
                      "Instructor__c": rabbitMQMsg.Instructor || "",
                      "Capacity__c": rabbitMQMsg.Capacity || 0,
-                     "Type__c": rabbitMQMsg.SessionType,
+                     "Status__c": rabbitMQMsg.Status || "Gepland",
                      "Event__c": eventResult[0]?.Id || ""
+
                   };
-
-                  // Verwerk gastsprekers
-                  if(rabbitMQMsg.GuestSpeakers?.GuestSpeaker) {
-                     const speakers = rabbitMQMsg.GuestSpeakers.GuestSpeaker
-                         .map(s => s.email).join(';');
-                     salesForceMsg.GuestSpeaker__c = speakers;
-                  }
-
-                  // Verwerk gebruikersregistraties
-                  if(rabbitMQMsg.RegisteredUsers?.User) {
-                     const userIds = await Promise.all(
-                         rabbitMQMsg.RegisteredUsers.User.map(async u => {
-                            const userQuery = salesforceClient.sObject("User")
-                                .select("Id")
-                                .where({Email: u.email})
-                                .limit(1);
-                            const result = await userQuery.run();
-                            return result[0]?.Id;
-                         })
-                     );
-                     salesForceMsg.Session_Participant__c = userIds.filter(Boolean).join(';');
-                  }
 
                   await salesforceClient.createSession(salesForceMsg);
                   console.log("✅ Sessie aangemaakt in Salesforce");
@@ -130,36 +103,15 @@ module.exports = async function StartSessionConsumer(channel, salesforceClient) 
             case "update":
                try {
                   salesForceMsg = {
-                     ...(rabbitMQMsg.SessionName && {"Name": rabbitMQMsg.SessionName}),
-                     ...(rabbitMQMsg.SessionDescription && {"Description__c": rabbitMQMsg.SessionDescription}),
-                     ...(rabbitMQMsg.StartDateTime && {"SessionStart__c": rabbitMQMsg.StartDateTime}),
-                     ...(rabbitMQMsg.EndDateTime && {"SessionEnd__c": rabbitMQMsg.EndDateTime}),
-                     ...(rabbitMQMsg.SessionLocation && {"Location__c": rabbitMQMsg.SessionLocation}),
-                     ...(rabbitMQMsg.Instructor && {"Instructor__c": rabbitMQMsg.Instructor}),
-                     ...(rabbitMQMsg.Capacity && {"Capacity__c": rabbitMQMsg.Capacity}),
-                     ...(rabbitMQMsg.SessionType && {"Type__c": rabbitMQMsg.SessionType})
+                     ...(rabbitMQMsg.SessionName && { "Name": rabbitMQMsg.SessionName }),
+                     ...(rabbitMQMsg.Description && { "Description__c": rabbitMQMsg.Description }),
+                     ...(rabbitMQMsg.StartDateTime && { "SessionStart__c": rabbitMQMsg.StartDateTime }),
+                     ...(rabbitMQMsg.EndDateTime && { "SessionEnd__c": rabbitMQMsg.EndDateTime }),
+                     ...(rabbitMQMsg.Location && { "Location__c": rabbitMQMsg.Location }),
+                     ...(rabbitMQMsg.Instructor && { "Instructor__c": rabbitMQMsg.Instructor }),
+                     ...(rabbitMQMsg.Capacity && { "Capacity__c": rabbitMQMsg.Capacity }),
+                     ...(rabbitMQMsg.Status && { "Status__c": rabbitMQMsg.Status })
                   };
-
-                  // Update gastsprekers
-                  if(rabbitMQMsg.GuestSpeakers?.GuestSpeaker) {
-                     salesForceMsg.GuestSpeaker__c = rabbitMQMsg.GuestSpeakers.GuestSpeaker
-                         .map(s => s.email).join(';');
-                  }
-
-                  // Update geregistreerde gebruikers
-                  if(rabbitMQMsg.RegisteredUsers?.User) {
-                     const userIds = await Promise.all(
-                         rabbitMQMsg.RegisteredUsers.User.map(async u => {
-                            const userQuery = salesforceClient.sObject("User")
-                                .select("Id")
-                                .where({Email: u.email})
-                                .limit(1);
-                            const result = await userQuery.run();
-                            return result[0]?.Id;
-                         })
-                     );
-                     salesForceMsg.Session_Participant__c = userIds.filter(Boolean).join(';');
-                  }
 
                   await salesforceClient.updateSession(SalesforceObjId, salesForceMsg);
                   console.log("✅ Sessie geüpdatet in Salesforce");
