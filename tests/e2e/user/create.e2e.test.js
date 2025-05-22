@@ -1,10 +1,10 @@
+process.env.IGNORE_CDC_API_ORIGIN = 'true';
 require('dotenv').config();
 const amqp = require('amqplib');
 const SalesforceClient = require('../../../salesforceClient');
 const { startCDCListener, stopCDCListener } = require('../../../cdc/cdcListener');
 const { xmlToJson } = require('../../../utils/xmlJsonTranslator');
 
-process.env.IGNORE_CDC_API_ORIGIN = 'true';
 jest.setTimeout(30000);
 
 const waitForRabbitMQ = async (amqpUrl, retries = 5, delay = 2000) => {
@@ -12,15 +12,14 @@ const waitForRabbitMQ = async (amqpUrl, retries = 5, delay = 2000) => {
     try {
       return await amqp.connect(amqpUrl);
     } catch {
-      console.warn(`⏳ Wachten op RabbitMQ (${i + 1}/${retries})...`);
       await new Promise(res => setTimeout(res, delay));
     }
   }
   throw new Error('RabbitMQ niet bereikbaar');
 };
 
-describe('🧪 E2E – User UPDATE flow', () => {
-  let connection, channel, sfClient, createdId;
+describe('🧪 E2E – User CREATE flow', () => {
+  let connection, channel, sfClient;
 
   beforeAll(async () => {
     const amqpUrl = `amqp://${process.env.RABBITMQ_USERNAME}:${process.env.RABBITMQ_PASSWORD}@${process.env.RABBITMQ_HOST}:${process.env.RABBITMQ_PORT}`;
@@ -31,9 +30,9 @@ describe('🧪 E2E – User UPDATE flow', () => {
 
     const services = ['frontend', 'facturatie', 'kassa'];
     for (const service of services) {
-      const queue = `test_user_update_${service}`;
+      const queue = `test_user_create_${service}`;
       await channel.assertQueue(queue, { durable: false });
-      await channel.bindQueue(queue, 'user', `${service}.user.update`);
+      await channel.bindQueue(queue, 'user', `${service}.user.create`);
       await channel.purgeQueue(queue);
     }
 
@@ -45,29 +44,32 @@ describe('🧪 E2E – User UPDATE flow', () => {
     );
     await sfClient.login();
     await startCDCListener(sfClient, channel);
-
-    const uniqueEmail = `update-${Date.now()}@example.com`;
-    const result = await sfClient.conn.sobject('Contact').create({
-      FirstName: 'PreUpdate',
-      LastName: 'Test',
-      Email: uniqueEmail,
-      Phone: '0470000000',
-      Password__c: 'init1234',                        // ✅ verplicht veld
-      TimeOfAction__c: new Date().toISOString()       // ✅ verplicht veld
-    });
-
-    createdId = result.id;
   });
 
-  it('📤 publiceert correcte UPDATE payload naar alle services', async () => {
-    const queue = 'test_user_update_frontend';
+  it('📤 publiceert correcte CREATE payload naar alle services', async () => {
+    const uniqueSuffix = `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+    const isoTimestamp = new Date().toISOString();
+
+    const result = await sfClient.createUser({
+      FirstName: `E2E-${uniqueSuffix}`,
+      LastName: `CreateTest-${uniqueSuffix}`,
+      Email: `create-${uniqueSuffix}@example.com`,
+      Phone: `${Math.floor(1000000000 + Math.random() * 9000000000)}`,
+      Password__c: `pw-${uniqueSuffix}`,
+      UUID__c: isoTimestamp,
+      TimeOfAction__c: isoTimestamp
+    });
+
+    expect(result).toHaveProperty('id');
+
+    const queue = 'test_user_create_frontend';
 
     const consumePromise = new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject('⏰ Geen UPDATE-bericht ontvangen'), 15000);
+      const timeoutId = setTimeout(() => reject('⏰ Geen CREATE-bericht ontvangen'), 15000);
 
       channel.consume(queue, async (msg) => {
         if (msg) {
-          clearTimeout(timeout);
+          clearTimeout(timeoutId);
           try {
             const parsed = await xmlToJson(msg.content.toString());
             channel.ack(msg);
@@ -79,16 +81,11 @@ describe('🧪 E2E – User UPDATE flow', () => {
       }, { noAck: false });
     });
 
-    await sfClient.conn.sobject('Contact').update({
-      Id: createdId,
-      FirstName: 'PostUpdate'
-    });
-
     const message = await consumePromise;
 
     expect(message).toHaveProperty('UserMessage');
-    expect(message.UserMessage.ActionType).toBe('UPDATE');
-    expect(message.UserMessage.UUID).toBeDefined();
+    expect(message.UserMessage.ActionType).toBe('CREATE');
+    expect(message.UserMessage.UUID).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3,6}Z$/);
     expect(message.UserMessage.TimeOfAction).toBeDefined();
   });
 
