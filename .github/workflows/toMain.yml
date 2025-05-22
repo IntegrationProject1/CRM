@@ -33,6 +33,7 @@ jobs:
 
       - name: Set default .env for local RabbitMQ CI test
         run: |
+          echo -n > .env
           echo "RABBITMQ_HOST=localhost" >> .env
           echo "RABBITMQ_PORT=5672" >> .env
           echo "RABBITMQ_USERNAME=guest" >> .env
