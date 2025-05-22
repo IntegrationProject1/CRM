@@ -57,6 +57,7 @@ module.exports = async function StartSessionConsumer(channel, salesforceClient) 
 
             let result;
             try {
+
                result = await query.run();
             } catch (err) {
                channel.nack(msg, false, false);
@@ -77,48 +78,55 @@ module.exports = async function StartSessionConsumer(channel, salesforceClient) 
             case "create":
                try {
                   // Zoek gerelateerd event
-                  const eventQuery = await salesforceClient.sObject("Event__c")
+                  const eventQuery = salesforceClient.sObject("Event__c")
                       .select("Id")
                       .where({UUID__c: rabbitMQMsg.EventUUID})
                       .limit(1);
                   const eventResult = await eventQuery.run();
 
+
                   salesForceMsg = {
                      "UUID__c": rabbitMQMsg.SessionUUID,
                      "Name": rabbitMQMsg.SessionName,
                      "Description__c": rabbitMQMsg.SessionDescription || "",
-                     "SessionStart__c": rabbitMQMsg.StartDateTime,
-                     "SessionEnd__c": rabbitMQMsg.EndDateTime,
+                     "StartDateTime__c": rabbitMQMsg.StartDateTime,
+                     "EndDateTime__c": rabbitMQMsg.EndDateTime,
                      "Location__c": rabbitMQMsg.SessionLocation,
-                     "Instructor__c": rabbitMQMsg.Instructor || "",
                      "Capacity__c": rabbitMQMsg.Capacity || 0,
-                     "Type__c": rabbitMQMsg.SessionType,
+                     "SessionType__c": rabbitMQMsg.SessionType,
                      "Event__c": eventResult[0]?.Id || ""
                   };
 
                   // Verwerk gastsprekers
-                  if(rabbitMQMsg.GuestSpeakers?.GuestSpeaker) {
-                     const speakers = rabbitMQMsg.GuestSpeakers.GuestSpeaker
-                         .map(s => s.email).join(';');
-                     salesForceMsg.GuestSpeaker__c = speakers;
+                  if (rabbitMQMsg.GuestSpeakers?.GuestSpeaker?.[0]?.email) {
+                     const gsQuery = salesforceClient.sObject("Session_Participant__c")
+                         .select("Id")
+                         .where({Email__c: rabbitMQMsg.GuestSpeakers.GuestSpeaker[0].email})
+                         .limit(1);
+                     const gsResult = await gsQuery.run();
+                     if (gsResult[0]?.Id) {
+                        salesForceMsg.GuestSpeaker__c = gsResult[0].Id;
+                     }
                   }
 
+
                   // Verwerk gebruikersregistraties
-                  if(rabbitMQMsg.RegisteredUsers?.User) {
+                  if (rabbitMQMsg.RegisteredUsers?.User) {
                      const userIds = await Promise.all(
                          rabbitMQMsg.RegisteredUsers.User.map(async u => {
-                            const userQuery = salesforceClient.sObject("User")
+                            const userQuery = salesforceClient.sObject("Session_Participant__c")
                                 .select("Id")
-                                .where({Email: u.email})
+                                .where({ParticipantEmail__c: u.email})
                                 .limit(1);
                             const result = await userQuery.run();
                             return result[0]?.Id;
                          })
                      );
-                     salesForceMsg.Session_Participant__c = userIds.filter(Boolean).join(';');
+                     salesForceMsg.RegisteredUsers__c = userIds.filter(Boolean).join(';');
                   }
 
-                  await salesforceClient.createSession(salesForceMsg);
+
+                  await salesforceClient.sObject("Session__c").create(salesForceMsg);
                   console.log("✅ Sessie aangemaakt in Salesforce");
                } catch (err) {
                   channel.nack(msg, false, false);
@@ -132,12 +140,11 @@ module.exports = async function StartSessionConsumer(channel, salesforceClient) 
                   salesForceMsg = {
                      ...(rabbitMQMsg.SessionName && {"Name": rabbitMQMsg.SessionName}),
                      ...(rabbitMQMsg.SessionDescription && {"Description__c": rabbitMQMsg.SessionDescription}),
-                     ...(rabbitMQMsg.StartDateTime && {"SessionStart__c": rabbitMQMsg.StartDateTime}),
-                     ...(rabbitMQMsg.EndDateTime && {"SessionEnd__c": rabbitMQMsg.EndDateTime}),
+                     ...(rabbitMQMsg.StartDateTime && {"StartDateTime__c": rabbitMQMsg.StartDateTime}),
+                     ...(rabbitMQMsg.EndDateTime && {"EndDateTime__c": rabbitMQMsg.EndDateTime}),
                      ...(rabbitMQMsg.SessionLocation && {"Location__c": rabbitMQMsg.SessionLocation}),
-                     ...(rabbitMQMsg.Instructor && {"Instructor__c": rabbitMQMsg.Instructor}),
                      ...(rabbitMQMsg.Capacity && {"Capacity__c": rabbitMQMsg.Capacity}),
-                     ...(rabbitMQMsg.SessionType && {"Type__c": rabbitMQMsg.SessionType})
+                     ...(rabbitMQMsg.SessionType && {"SessionType__c": rabbitMQMsg.SessionType})
                   };
 
                   // Update gastsprekers
@@ -152,7 +159,7 @@ module.exports = async function StartSessionConsumer(channel, salesforceClient) 
                          rabbitMQMsg.RegisteredUsers.User.map(async u => {
                             const userQuery = salesforceClient.sObject("User")
                                 .select("Id")
-                                .where({Email: u.email})
+                                .where({ParticipantEmail__c: u.email})
                                 .limit(1);
                             const result = await userQuery.run();
                             return result[0]?.Id;
