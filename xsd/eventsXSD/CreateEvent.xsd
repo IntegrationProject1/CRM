@@ -14,7 +14,7 @@
                 <xs:element name="Organisator" type="xs:string"/>
                 <xs:element name="Capacity" type="xs:positiveInteger"/>
                 <xs:element name="EventType" type="xs:string"/>
-                <xs:element name="RegisteredUsers">
+                <xs:element name="RegisteredUsers" minOccurs="0">
                     <xs:complexType>
                         <xs:sequence>
                             <xs:element name="User" maxOccurs="unbounded" minOccurs="0">
