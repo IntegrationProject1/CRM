@@ -22,7 +22,7 @@ describe('xmlValidator', () => {
     });
 
     test('should return true for valid XML', () => {
-        fs.readFileSync.mockReturnValue('<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"></xsd:schema>');
+        fs.readFileSync.mockReturnValue('<dummyXSD></dummyXSD>');
 
         const result = validateXml(validXml, mockXsdPath);
         expect(result).toBe(true);
