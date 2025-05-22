@@ -11,7 +11,7 @@ const StartSessionConsumer = require('./consumers/SessionConsumer');
 // const StartSessionParticipateConsumer = require('./consumers/SessionParticipateConsumer');
 const StartEventConsumer = require('./consumers/EventConsumer');
 const startHeartbeat = require('./publisher/heartbeat');
-const sendMessage = require('./publisher/logger');
+const {sendMessage} = require('./publisher/logger');
 const {general_logger} = require("./utils/logger");
 
 (async () => {
@@ -67,11 +67,11 @@ const {general_logger} = require("./utils/logger");
       });
       general_logger.info('Luisterd naar Event__ChangeEvent');
 //-------------------------------------------------------------------------------------------------------------------------------------------
-      await sendMessage("info", "200", "Start de consumers (Session__ChangeEvent) van CRM Service");
-      cdcClient.subscribe('/data/Session__ChangeEvent', async (message) => {
-         await SessionCDCHandler(message, sfClient, channel);
-      });
-      general_logger.info('Luisterd naar Session__ChangeEvent');
+//       await sendMessage("info", "200", "Start de consumers (Session__ChangeEvent) van CRM Service");
+//       cdcClient.subscribe('/data/Session__ChangeEvent', async (message) => {
+//          await SessionCDCHandler(message, sfClient, channel);
+//       });
+//       general_logger.info('Luisterd naar Session__ChangeEvent');
 //-------------------------------------------------------------------------------------------------------------------------------------------
 //       await sendMessage("info", "200", "Start de consumers (Event_Participant__ChangeEvent) van CRM Service");
       // cdcClient.subscribe('/data/Event_Participant__ChangeEvent', async (message) => {
