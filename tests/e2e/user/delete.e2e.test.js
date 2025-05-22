@@ -5,14 +5,13 @@ const { startCDCListener, stopCDCListener } = require('../../../cdc/cdcListener'
 const { xmlToJson } = require('../../../utils/xmlJsonTranslator');
 
 process.env.IGNORE_CDC_API_ORIGIN = 'true';
-jest.setTimeout(30000);
+jest.setTimeout(30000); //extra tijd voor CI gevem
 
 const waitForRabbitMQ = async (amqpUrl, retries = 5, delay = 2000) => {
   for (let i = 0; i < retries; i++) {
     try {
       return await amqp.connect(amqpUrl);
     } catch {
-      console.warn(`⏳ Wachten op RabbitMQ (${i + 1}/${retries})...`);
       await new Promise(res => setTimeout(res, delay));
     }
   }
@@ -46,7 +45,6 @@ describe('🧪 E2E – User DELETE flow', () => {
     await sfClient.login();
     await startCDCListener(sfClient, channel);
 
-    // 🔐 Unieke gebruiker aanmaken met UUID__c
     const uniqueSuffix = `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
     uuid = new Date().toISOString();
 
@@ -56,7 +54,8 @@ describe('🧪 E2E – User DELETE flow', () => {
       Email: `delete-${uniqueSuffix}@example.com`,
       Phone: `${Math.floor(1000000000 + Math.random() * 9000000000)}`,
       Password__c: `delete-${uniqueSuffix}`,
-      UUID__c: uuid
+      UUID__c: uuid,
+      TimeOfAction__c: uuid //toegevoegd om REQUIRED_FIELD_MISSING op te lossen
     });
 
     createdId = result.id;
@@ -66,9 +65,7 @@ describe('🧪 E2E – User DELETE flow', () => {
     const queue = 'test_user_delete_frontend';
 
     const consumePromise = new Promise((resolve, reject) => {
-      const timeoutId = setTimeout(() => {
-        reject('⏰ Geen DELETE-bericht ontvangen');
-      }, 15000);
+      const timeoutId = setTimeout(() => reject('⏰ Geen DELETE-bericht ontvangen'), 15000);
 
       channel.consume(queue, async (msg) => {
         if (msg) {
@@ -85,7 +82,6 @@ describe('🧪 E2E – User DELETE flow', () => {
     });
 
     await sfClient.deleteUser(createdId);
-
     const message = await consumePromise;
 
     expect(message).toHaveProperty('UserMessage');
