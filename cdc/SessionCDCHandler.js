@@ -16,8 +16,9 @@ function generateMicroDateTime() {
 module.exports = async function SessionCDCHandler(message, sfClient, RMQChannel) {
     const { ChangeEventHeader, ...cdcObject } = message.payload;
 
-    if (ChangeEventHeader.changeOrigin === "com/salesforce/api/rest/50.0") {
-        console.log("🚫 Salesforce API call detected, skipping action.");
+    // Verbeterde API call detectie
+    if (ChangeEventHeader.changeOrigin.includes("com/salesforce/api/rest")) {
+        console.log("🚫 Salesforce REST API call detected, skipping action.");
         return;
     }
 
@@ -35,136 +36,173 @@ module.exports = async function SessionCDCHandler(message, sfClient, RMQChannel)
         switch (action) {
             case 'CREATE':
                 UUID = generateMicroDateTime();
+                // Update session met UUID
                 await sfClient.sObject('Session__c')
                     .update({ Id: recordId, UUID__c: UUID });
                 console.log("✅ Session UUID updated:", UUID);
 
-                // Get related event UUID
-                const event = await sfClient.sObject('Event__c')
-                    .select('UUID__c')
+                // Haal Event UUID op
+                const eventResult = await sfClient.sObject("Event__c")
+                    .select("UUID__c")
                     .where({ Id: cdcObject.Event__c })
-                    .first();
+                    .limit(1)
+                    .run();
+                const eventUUID = eventResult[0]?.UUID__c || "";
+
+                // Haal gastspreker email op
+                const guestSpeakerResult = await sfClient.sObject("Contact")
+                    .select("Email")
+                    .where({ Id: cdcObject.GuestSpeaker__c })
+                    .limit(1)
+                    .run();
+                const guestSpeakerEmail = guestSpeakerResult[0]?.Email || "";
+
+                // Haal deelnemers op
+                const participants = await Promise.all(
+                    (cdcObject.Session_Participant__c?.split(';') || []).map(async id => {
+                        const userResult = await sfClient.sObject("User")
+                            .select("Email")
+                            .where({ Id: id.trim() })
+                            .limit(1)
+                            .run();
+                        return { email: userResult[0]?.Email || "" };
+                    })
+                );
 
                 JSONMsg = {
                     CreateSession: {
                         SessionUUID: UUID,
-                        EventUUID: event?.UUID__c || '',
+                        EventUUID: eventUUID,
                         SessionName: cdcObject.Name,
                         SessionDescription: cdcObject.Description__c,
-                        GuestSpeakers: cdcObject.GuestSpeaker__c ? {
-                            GuestSpeaker: cdcObject.GuestSpeaker__c.split(';').map(email => ({
-                                email: email.trim()
-                            }))
-                        } : null,
-                        Capacity: parseInt(cdcObject.Capacity__c) || 0,
-                        StartDateTime: cdcObject.SessionStart__c,
-                        EndDateTime: cdcObject.SessionEnd__c,
+                        GuestSpeakers: {
+                            GuestSpeaker: [{
+                                email: guestSpeakerEmail
+                            }]
+                        },
+                        Capacity: cdcObject.Capacity__c,
+                        StartDateTime: cdcObject.StartDateTime__c, // ✅ juiste volgorde
+                        EndDateTime: cdcObject.EndDateTime__c,
                         SessionLocation: cdcObject.Location__c,
-                        SessionType: cdcObject.Type__c,
-                        RegisteredUsers: cdcObject.Session_Participant__c ? {
-                            User: await Promise.all(
-                                cdcObject.Session_Participant__c.split(';').map(async userId => {
-                                    const user = await sfClient.sObject('User')
-                                        .select('Email')
-                                        .where({ Id: userId.trim() })
-                                        .first();
-                                    return { email: user?.Email || '' };
-                                })
-                            )
-                        } : null
+                        SessionType: cdcObject.SessionType__c,
+                        RegisteredUsers: {
+                            User: participants
+                        }
                     }
                 };
-                xsdPath = './xsd/sessionsXSD/CreateSession.xsd';
+                xsdPath = './xsd/sessionXSD/CreateSession.xsd';
                 break;
 
             case 'UPDATE':
                 const updatedSession = await sfClient.sObject('Session__c')
                     .retrieve(recordId);
 
-                const updatedEvent = cdcObject.Event__c ?
-                    await sfClient.sObject('Event__c')
-                        .select('UUID__c')
-                        .where({ Id: cdcObject.Event__c })
-                        .first() : null;
+                // Haal Event UUID op
+                const eventUUIDUpdate = updatedSession.Event__c
+                    ? (await sfClient.sObject("Event__c")
+                    .select("UUID__c")
+                    .where({ Id: updatedSession.Event__c })
+                    .limit(1)
+                    .run())[0]?.UUID__c || ""
+                    : "";
+
+                // Haal GuestSpeaker email op
+                const speakerEmailUpdate = updatedSession.GuestSpeaker__c
+                    ? (await sfClient.sObject("Contact")
+                    .select("Email")
+                    .where({ Id: updatedSession.GuestSpeaker__c })
+                    .limit(1)
+                    .run())[0]?.Email || ""
+                    : "";
+
+            function convertToIsoZ(datetime) {
+                if (!datetime) return "";
+                const date = new Date(datetime);
+                return date.toISOString();
+            }
+
 
                 JSONMsg = {
                     UpdateSession: {
                         SessionUUID: updatedSession.UUID__c,
-                        ...(cdcObject.Name && { SessionName: cdcObject.Name }),
-                        ...(cdcObject.Description__c && { SessionDescription: cdcObject.Description__c }),
-                        ...(cdcObject.GuestSpeaker__c && {
-                            GuestSpeakers: {
-                                GuestSpeaker: cdcObject.GuestSpeaker__c.split(';').map(email => ({
-                                    email: email.trim()
-                                }))
-                            }
-                        }),
-                        ...(cdcObject.Capacity__c && { Capacity: parseInt(cdcObject.Capacity__c) }),
-                        ...(cdcObject.SessionStart__c && { StartDateTime: cdcObject.SessionStart__c }),
-                        ...(cdcObject.SessionEnd__c && { EndDateTime: cdcObject.SessionEnd__c }),
-                        ...(cdcObject.Location__c && { SessionLocation: cdcObject.Location__c }),
-                        ...(cdcObject.Type__c && { SessionType: cdcObject.Type__c }),
-                        ...(cdcObject.Event__c && { EventUUID: updatedEvent?.UUID__c }),
-                        ...(cdcObject.Session_Participant__c && {
-                            RegisteredUsers: {
-                                User: await Promise.all(
-                                    cdcObject.Session_Participant__c.split(';').map(async userId => {
-                                        const user = await sfClient.sObject('User')
-                                            .select('Email')
-                                            .where({ Id: userId.trim() })
-                                            .first();
-                                        return { email: user?.Email || '' };
-                                    })
-                                )
-                            }
-                        })
+                        EventUUID: eventUUIDUpdate,
+                        SessionName: cdcObject.Name || updatedSession.Name || "",
+                        SessionDescription: cdcObject.Description__c || updatedSession.Description__c || "",
+                        GuestSpeakers: {
+                            GuestSpeaker: [
+                                { email: speakerEmailUpdate }
+                            ]
+                        },
+                        Capacity: cdcObject.Capacity__c || updatedSession.Capacity__c || 0,
+                        StartDateTime: convertToIsoZ(cdcObject.StartDateTime__c || updatedSession.StartDateTime__c),
+                        EndDateTime: convertToIsoZ(cdcObject.EndDateTime__c || updatedSession.EndDateTime__c),
+                        SessionLocation: cdcObject.Location__c || updatedSession.Location__c || "",
+                        SessionType: cdcObject.SessionType__c || updatedSession.SessionType__c || "",
+                        RegisteredUsers: {
+                            User: [ { email: "placeholder@example.com" } ]
+                        }
                     }
                 };
-                xsdPath = './xsd/sessionsXSD/UpdateSession.xsd';
+                xsdPath = './xsd/sessionXSD/UpdateSession.xsd';
                 break;
 
+
             case 'DELETE':
-                const deletedSession = await sfClient.sObject('Session__c')
-                    .select('UUID__c')
-                    .where({ Id: recordId, IsDeleted: true })
-                    .first();
+                const deletedSessionResult = await sfClient.sObject('Session__c')
+                    .select("UUID__c")
+                    .where({ Id: recordId })
+                    .limit(1)
+                    .scanAll(true) // belangrijk bij delete!
+                    .run();
+
+                const deletedUUID = deletedSessionResult[0]?.UUID__c;
+
+                if (!deletedUUID) {
+                    throw new Error("Session UUID niet gevonden");
+                }
 
                 JSONMsg = {
                     DeleteSession: {
                         ActionType: action,
-                        SessionUUID: deletedSession.UUID__c,
+                        SessionUUID: deletedUUID,
                         TimeOfAction: new Date().toISOString()
                     }
                 };
-                xsdPath = './xsd/sessionsXSD/DeleteSession.xsd';
+                xsdPath = './xsd/sessionXSD/DeleteSession.xsd';
                 break;
+
 
             default:
                 console.warn("⚠️ Unhandled action:", action);
                 return;
         }
 
-        // Clean null values
-        JSONMsg = JSON.parse(JSON.stringify(JSONMsg));
+        // Verwijder lege velden
+        JSONMsg = JSON.parse(JSON.stringify(JSONMsg, (k, v) => v ?? undefined));
 
         xmlMessage = jsonToXml(JSONMsg);
         if (!validator.validateXml(xmlMessage, xsdPath)) {
-            throw new Error(`XML validation failed for ${action}`);
+            throw new Error(`XML validatie mislukt voor ${action}`);
         }
 
         const exchangeName = 'session';
         await RMQChannel.assertExchange(exchangeName, 'topic', { durable: true });
 
-        const routingKeys = [`session.${action.toLowerCase()}`];
+        const routingKeys = [
+            `planning.session.${action.toLowerCase()}`
+            // `kassa.session.${action.toLowerCase()}`,
+            // `frontend.session.${action.toLowerCase()}`
+        ];
+
         for (const routingKey of routingKeys) {
             RMQChannel.publish(exchangeName, routingKey, Buffer.from(xmlMessage));
-            console.log(`📤 Session message routed to ${exchangeName} (${routingKey})`);
+            console.log(`📤 Bericht verstuurd naar ${exchangeName} (${routingKey})`);
         }
 
     } catch (error) {
-        console.error(`❌ Session ${action} error:`, error.message);
+        console.error(`❌ Fout tijdens ${action} actie:`, error.message);
         if (error.response?.body) {
-            console.error('Salesforce error details:', error.response.body);
+            console.error('Salesforce foutdetails:', error.response.body);
         }
     }
 };
