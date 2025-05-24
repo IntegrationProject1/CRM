@@ -1,13 +1,17 @@
 /**
- * CRM Service Initialization
+ * @file This file initializes the CRM Service.
  * @module index
+ * @description Handles RabbitMQ connections, Salesforce login, and CDC listeners.
  *
- * @author Lars - Team Lead
- * @author Jürgen - Developer
- * @author Mateo - Senior Developer
- * @author Antoine - Analyst/Architect
- * @author Karim - Developer
- * @author Aiden - Test Engineer
+ * @author Lars
+ * @author Jürgen
+ * @author Mateo
+ * @author Antoine
+ * @author Karim
+ * @author Aiden
+ *
+ * @copyright Copyright (c) 2023, Team 4, Fontys ICT
+ * @license Apache-2.0
  */
 
 require('dotenv').config();

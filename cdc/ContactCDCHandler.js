@@ -1,10 +1,34 @@
+/**
+ * User CDC Handler
+ * @module ContactCDCHandler
+ *
+ */
+
 require('dotenv').config();
 const { jsonToXml } = require("../utils/xmlJsonTranslator");
 const validator = require("../utils/xmlValidator");
 const hrtimeBase = process.hrtime.bigint();
 const { jsonToAddress } = require("../utils/adressTranslator");
 
-// voor update te fixen
+/**
+ * Formats a Salesforce address object into a standardized string format. (for fix update)
+ * @param address
+ * @returns {string}
+ * @example
+ * const address = {
+ *    Street: "Hoofdstraat",
+ *    HouseNumber: "123",
+ *    BusCode: "A",
+ *    City: "Amsterdam",
+ *    State: "Noord-Holland",
+ *    PostalCode: "1012AB",
+ *    Country: "Nederland"
+ *    };
+ * const formattedAddress = formatAddress(address);
+ * console.log(formattedAddress);
+ * // "Hoofdstraat 123 A, Amsterdam, Noord-Holland, 1012AB, Nederland"
+ *
+ */
 function formatAddress(address) {
    if (!address || !address.Street) return "";
 
