@@ -35,7 +35,6 @@ module.exports = async function EventCDCHandler(message, sfClient, RMQChannel) {
       return;
    }
 
-   console.log("Captured Event Object: ", { header: ChangeEventHeader, changes: cdcObject });
    event_logger.info('Captured Event Object:', { header: ChangeEventHeader, changes: cdcObject });
    await sendMessage("info", "200", `Captured Event Object: ${JSON.stringify({ header: ChangeEventHeader, changes: cdcObject })}`);
 

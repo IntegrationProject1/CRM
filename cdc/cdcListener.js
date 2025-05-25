@@ -6,7 +6,7 @@
 
 const ContactCDCHandler = require('./ContactCDCHandler'); // ✅ importeer de handler
 
-let subscription; // 🔁 globale verwijzing voor stop()
+let subscription; // 🔁 globale verwijzing voor stop()<
 
 /**
  * Start de Salesforce CDC Listener
@@ -19,13 +19,13 @@ async function startCDCListener(sfClient, channel) {
     const topic = sfClient.streaming.topic("/data/ContactChangeEvent");
 
     subscription = topic.subscribe((message) => {
-      console.log("📡 CDC event ontvangen:", message);
+      console.log("CDC event received:", message);
       ContactCDCHandler(message, sfClient, channel);
     });
 
-    console.log("✅ CDC Listener actief op /data/ContactChangeEvent");
+    console.log("CDC Listener active on /data/ContactChangeEven");
   } catch (err) {
-    console.error("❌ Fout bij starten van CDC Listener:", err.message);
+    console.error("Error starting CDC Listener:", err.message);
     throw err;
   }
 }
@@ -36,7 +36,7 @@ async function startCDCListener(sfClient, channel) {
 async function stopCDCListener() {
   if (subscription) {
     await subscription.cancel();
-    console.log("🛑 CDC Listener gestopt");
+    console.log("CDC Listener stopped");
   }
 }
 

@@ -9,6 +9,8 @@ const { jsonToXml } = require("../utils/xmlJsonTranslator");
 const validator = require("../utils/xmlValidator");
 const hrtimeBase = process.hrtime.bigint();
 const { jsonToAddress } = require("../utils/adressTranslator");
+const {user_logger} = require("../utils/logger");
+const {sendMessage} = require("../publisher/logger");
 
 /**
  * Formats a Salesforce address object into a standardized string format. (for fix update)
@@ -29,7 +31,7 @@ const { jsonToAddress } = require("../utils/adressTranslator");
  * // "Hoofdstraat 123 A, Amsterdam, Noord-Holland, 1012AB, Nederland"
  *
  */
-function formatAddress(address) {
+async function formatAddress(address) {
    if (!address || !address.Street) return "";
 
    try {
@@ -47,7 +49,8 @@ function formatAddress(address) {
          Street: streetParts
       });
    } catch (error) {
-      console.error('Adresconversiefout:', error);
+      user_logger.error('Address conversion error:', error);
+      await sendMessage("error", "500", `Address conversion error: ${error.message}`);
       return "";
    }
 }
@@ -74,17 +77,22 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
 
    const ignoreOrigin = process.env.IGNORE_CDC_API_ORIGIN === 'true';
    if (!ignoreOrigin && ChangeEventHeader.changeOrigin === "com/salesforce/api/rest/50.0") {
-      console.log("🚫 Salesforce API call gedetecteerd, actie overgeslagen.");
+      user_logger.debug("Salesforce API call detected, skipping action.");
       return;
    }
 
    const action = ChangeEventHeader.changeType;
-   console.log('📥 Salesforce CDC Contact Event ontvangen:', action, cdcObjectData);
+   user_logger.info('Captured Contact CDC Event:', { header: ChangeEventHeader, changes: cdcObjectData });
+   await sendMessage("info", "200", `Captured Contact CDC Event: ${JSON.stringify({ header: ChangeEventHeader, changes: cdcObjectData })}`);
 
    let recordId;
    if (['CREATE', 'UPDATE', 'DELETE'].includes(action)) {
       recordId = ChangeEventHeader.recordIds?.[0];
-      if (!recordId) return console.error('❌ Geen recordId gevonden.');
+      if (!recordId) {
+         user_logger.error('No recordId found for action:', action);
+         await sendMessage("error", "400", 'No recordId found for action: ' + action);
+         return;
+      }
    }
 
    let UUID;
@@ -97,7 +105,8 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
          case 'CREATE':
             UUID = generateMicroDateTime();
             await sfClient.updateUser(recordId, { UUID__c: UUID });
-            console.log("✅ UUID succesvol bijgewerkt:", UUID);
+            user_logger.info("UUID successfully updated:", UUID);
+            await sendMessage("info", "200", `UUID successfully updated: ${UUID}`);
 
 
             JSONMsg = {
@@ -131,7 +140,7 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
          case 'UPDATE':
             const updatedRecord = await sfClient.sObject('Contact').retrieve(recordId);
             if (!updatedRecord?.UUID__c) {
-               throw new Error(`Geen UUID gevonden voor record: ${recordId}`);
+               throw new Error(`No UUID found for record: ${recordId}`);
             }
 
             // Maak adresobjecten van Salesforce velden voor de update te laten werken.
@@ -184,7 +193,7 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
             const deletedRecord = resultDel[0];
 
             if (!deletedRecord?.UUID__c) {
-               throw new Error(`Geen UUID gevonden voor verwijderd record: ${recordId}`);
+               throw new Error(`No UUID found for deleted record: ${recordId}`);
             }
 
             JSONMsg = {
@@ -198,13 +207,15 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
             break;
 
          default:
-            console.warn("⚠️ Niet gehandelde actie:", action);
+            user_logger.warn("Unhandled action:", action);
+            await sendMessage("warn", "400", `Unhandled action: ${action}`);
+
             return;
       }
 
       xmlMessage = jsonToXml(JSONMsg.UserMessage, { rootName: 'UserMessage' });
       if (!validator.validateXml(xmlMessage, xsdPath)) {
-         throw new Error(`XML validatie gefaald voor actie: ${action}`);
+         throw new Error(`XML validation failed for action: ${action}`);
       }
 
       const exchangeName = 'user';
@@ -218,13 +229,13 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
 
       for (const routingKey of routingKeys) {
          RMQChannel.publish(exchangeName, routingKey, Buffer.from(xmlMessage));
-         console.log(`📤 Bericht verstuurd naar ${exchangeName} (${routingKey})`);
+         console.log(`Message sent to ${exchangeName} (${routingKey})`);
       }
 
    } catch (error) {
-      console.error(`❌ Kritieke fout tijdens ${action} actie:`, error.message);
+      console.error(`Critical error during ${action} actie:`, error.message);
       if (error.response?.body) {
-         console.error('Salesforce API fout details:', error.response.body);
+         console.error('Salesforce API error details:', error.response.body);
       }
    }
 };
