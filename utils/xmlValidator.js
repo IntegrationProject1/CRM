@@ -1,6 +1,8 @@
 const libxmljs = require('libxmljs2');
 const fs = require('fs');
 const path = require('path');
+const {general_logger} = require("./logger");
+const {sendMessage} = require("../publisher/logger");
 
 /**
  * Module for validating XML against XSD schemas.
@@ -17,8 +19,7 @@ const path = require('path');
  * const xml = '<UserMessage>...</UserMessage>';
  * const isValid = validateXml(xml, './schema.xsd');
  */
-
-function validateXml(xmlString, xsdPath) {
+async function validateXml(xmlString, xsdPath) {
     try {
         const xsdContent = fs.readFileSync(path.resolve(xsdPath), 'utf-8');
         const xsdDoc = libxmljs.parseXml(xsdContent);
@@ -26,11 +27,13 @@ function validateXml(xmlString, xsdPath) {
 
         const isValid = xmlDoc.validate(xsdDoc);
         if (!isValid) {
-            console.error('❌ XML Validatiefouten:', xmlDoc.validationErrors);
+            general_logger.error('Validation error of the xml:', xmlDoc.validationErrors);
+            await sendMessage("error", "400", "XML validation failed");
         }
         return isValid;
     } catch (err) {
-        console.error('❌ Fout bij valideren XML tegen XSD:', err.message);
+        general_logger.error("Error validating XML against XSD:", err.message);
+        await sendMessage("error", "500", "XML validation error");
         return false;
     }
 }

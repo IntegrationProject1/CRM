@@ -1,4 +1,9 @@
-// cdc/cdcListener.js
+/**
+ * Salesforce CDC Listener
+ * @module cdcListener
+ * @file cdc/cdcListener.js
+ */
+
 const ContactCDCHandler = require('./ContactCDCHandler'); // ✅ importeer de handler
 
 let subscription; // 🔁 globale verwijzing voor stop()
@@ -7,6 +12,7 @@ let subscription; // 🔁 globale verwijzing voor stop()
  * Start de Salesforce CDC Listener
  * @param {Object} sfClient - Ingelogde SalesforceClient instantie
  * @param {Object} channel - RabbitMQ kanaal
+ * @returns {Promise<void>} - Een belofte die wordt vervuld wanneer de listener is gestart
  */
 async function startCDCListener(sfClient, channel) {
   try {

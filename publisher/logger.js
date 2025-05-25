@@ -55,7 +55,7 @@ async function sendLog(channel, exchangeName, serviceName = 'CRM_Service', statu
  * @param {string} message - Message content.
  * @returns {Promise<void>} Resolves when the message is sent.
  * @example
- * sendMessage('logExchange', 'info', '200', 'Heartbeat message');
+ * sendMessage('info', '200', 'Heartbeat message');
  */
 async function sendMessage(status_level, code, message) {
     try {

@@ -96,7 +96,7 @@ const { general_logger } = require("./utils/logger");
       cdcClient.subscribe('/data/Event_Participant__ChangeEvent', async (message) => {
          await EventParticipantCDCHandler(message, sfClient, channel);
       });
-      await sendMessage("logExchange", "info", "200", "Starting consumers (Event_Participant__ChangeEvent) for CRM Service");
+      await sendMessage("info", "200", "Starting consumers (Event_Participant__ChangeEvent) for CRM Service");
       general_logger.info('Listening to Event_Participant__ChangeEvent');
 
       // Subscribe to Session__ChangeEvent

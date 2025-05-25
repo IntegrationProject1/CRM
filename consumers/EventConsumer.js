@@ -4,6 +4,8 @@
  */
 
 const xmlJsonTranslator = require("../utils/xmlJsonTranslator");
+const {event_logger} = require("../utils/logger");
+const {sendMessage} = require("../publisher/logger");
 
 /**
  * Start de EventConsumer om berichten van RabbitMQ-queues te verwerken.
@@ -22,12 +24,14 @@ module.exports = async function StartEventConsumer(channel, salesforceClient) {
    for (const action of queues) {
       await channel.assertQueue(`crm_event_${action}`, {durable: true});
 
-      console.log("luisteren op queue:", `crm_event_${action}`);
+      event_logger.info("listening on queue:", `crm_event_${action}`);
+      await sendMessage("crm_event", "200", `listening on queue: crm_event_${action}`);
       await channel.consume(`crm_event_${action}`, async (msg) => {
          if (!msg) return;
 
          const content = msg.content.toString();
-         console.log(`📥 [${action}EventConsumer] Ontvangen`);
+         event_logger.info(`[${action}EventConsumer] Received message:`, content);
+         await sendMessage("crm_event", "200", `[${action}EventConsumer] Received message: ${content}`);
 
          // convert XML to JSON
          let rabbitMQMsg;
@@ -35,18 +39,19 @@ module.exports = async function StartEventConsumer(channel, salesforceClient) {
             rabbitMQMsg = await xmlJsonTranslator.xmlToJson(content);
          } catch (e) {
             channel.nack(msg, false, false);
-            console.error('❌ Ongeldig XML formaat:', content);
+            event_logger.error("Invalid XML format:", content);
+            await sendMessage("crm_event", "400", `Invalid XML format: ${content}`);
             return;
          }
 
          let SalesforceObjId;
 
-         console.log("bericht", rabbitMQMsg)
          rabbitMQMsg = rabbitMQMsg[`${capitalize(action)}Event`];
 
          if (!rabbitMQMsg) {
             channel.nack(msg, false, false);
-            console.error("❌ Verkeerde root XSD:", rabbitMQMsg);
+            event_logger.error("Invalid XML format:", rabbitMQMsg);
+            await sendMessage("crm_event", "400", `Invalid root XML: ${rabbitMQMsg}`);
             return;
          }
 
@@ -62,39 +67,22 @@ module.exports = async function StartEventConsumer(channel, salesforceClient) {
                result = await query.run();
             } catch (err) {
                channel.nack(msg, false, false);
-               console.error("❌ Fout bij ophalen Salesforce Event ID:", err.message);
+               event_logger.error("Invalid XML format:", rabbitMQMsg);
+               await sendMessage("crm_event", "500", `Error retrieving Salesforce Event ID: ${err.message}`);
                return;
             }
 
             if (!result || result.length === 0) {
                channel.nack(msg, false, false);
                console.error("❌ Geen Salesforce Event ID gevonden voor UUID:", rabbitMQMsg.UUID);
+               event_logger.error("Geen Salesforce Event ID gevonden voor UUID:", rabbitMQMsg.EventUUID);
+               await sendMessage("crm_event", "404", `No Salesforce Event ID found for UUID: ${rabbitMQMsg.EventUUID}`);
                return;
             }
             SalesforceObjId = result[0].Id;
          }
 
          let salesForceMsg;
-         // <?xml version="1.0" encoding="UTF-8"?>
-         // <CreateEvent>
-         //     <EventUUID>2023-10-01T12:00:00Z</EventUUID>
-         //     <EventName>Sample Event</EventName>
-         //     <EventDescription>This is a sample event description.</EventDescription>
-         //     <StartDateTime>2023-10-10T09:00:00Z</StartDateTime>
-         //     <EndDateTime>2023-10-10T17:00:00Z</EndDateTime>
-         //     <EventLocation>Sample Location</EventLocation>
-         //     <Organisator>Sample Organizer</Organisator>
-         //     <Capacity>100</Capacity>
-         //     <EventType>Conference</EventType>
-         //     <RegisteredUsers>
-         //         <User>
-         //             <UUID>user-12345</UUID>
-         //         </User>
-         //         <User>
-         //             <UUID>user-67890</UUID>
-         //         </User>
-         //     </RegisteredUsers>
-         // </CreateEvent>
 
          switch (action) {
             case "create":
@@ -112,6 +100,8 @@ module.exports = async function StartEventConsumer(channel, salesforceClient) {
 
                   await salesforceClient.createEvent(salesForceMsg);
                   console.log("✅ Event aangemaakt in Salesforce");
+                  event_logger.info("Event is Created in Salesforce:", salesForceMsg);
+                  await sendMessage("crm_event", "201", `Event created in Salesforce: ${salesForceMsg.UUID__c}`);
                } catch (err) {
                   channel.nack(msg, false, false);
                   console.error("❌ Fout bij create:", err.message);
@@ -137,10 +127,12 @@ module.exports = async function StartEventConsumer(channel, salesforceClient) {
                  * */
 
                   await salesforceClient.updateEvent(SalesforceObjId, salesForceMsg);
-                  console.log("✅ Event geüpdatet in Salesforce");
+                  event_logger.info("Event is Updated in Salesforce:", salesForceMsg);
+                  await sendMessage("crm_event", "200", `Event updated in Salesforce: ${SalesforceObjId}`);
                } catch (err) {
                   channel.nack(msg, false, false);
-                  console.error("❌ Fout bij update:", err.message);
+                  event_logger.error("Error updating event in Salesforce:", err.message);
+                  await sendMessage("crm_event", "500", `Error updating event in Salesforce: ${err.message}`);
                   return;
                }
                break;
@@ -148,23 +140,27 @@ module.exports = async function StartEventConsumer(channel, salesforceClient) {
             case "delete":
                try {
                   await salesforceClient.deleteEvent(SalesforceObjId);
-                  console.log("✅ Event verwijderd uit Salesforce");
+                  event_logger.info("Event is Deleted in Salesforce:", SalesforceObjId);
+                  await sendMessage("crm_event", "200", `Event deleted in Salesforce: ${SalesforceObjId}`);
                } catch (err) {
                   channel.nack(msg, false, false);
-                  console.error("❌ Fout bij delete:", err.message);
+                  event_logger.error("Error deleting event in Salesforce:", err.message);
+                  await sendMessage("crm_event", "500", `Error deleting event in Salesforce: ${err.message}`);
                   return;
                }
                break;
 
             default:
                channel.nack(msg, false, false);
-               console.error(`❌ Ongeldige queue: ${action}`);
+               event_logger.error(`invalid queue: crm_event_${action}`);
+               await sendMessage("crm_event", "400", `Invalid queue: crm_event_${action}`);
                return;
          }
 
          await channel.ack(msg);
       });
 
-      console.log(`🔔 Listening for messages on queue "crm_event_${action}"…`);
+      event_logger.info(`Listening for messages on queue "crm_event_${action}"…`);
+      await sendMessage("crm_event", "200", `Listening for messages on queue: crm_event_${action}`);
    }
 };

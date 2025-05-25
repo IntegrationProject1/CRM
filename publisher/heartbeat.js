@@ -1,6 +1,8 @@
 const path = require('path');
 const {validateXml} = require('../utils/xmlValidator');
 const fs = require("fs");
+const {heartbeat_logger} = require("../utils/logger");
+const {sendMessage} = require("./logger");
 
 /**
  * Starts sending periodic heartbeat messages to a RabbitMQ exchange.
@@ -14,7 +16,7 @@ const fs = require("fs");
 async function startHeartbeat(channel, exchangeName, routingKey, serviceName = 'CRM_Service') {
    await channel.assertExchange(exchangeName, 'direct', {durable: true});
 
-   setInterval(() => {
+   setInterval(async () => {
       const xml = `
             <Heartbeat>
               <ServiceName>${serviceName}</ServiceName>
@@ -23,12 +25,14 @@ async function startHeartbeat(channel, exchangeName, routingKey, serviceName = '
       const xsdPath = path.join(__dirname, '../xsd/heartbeatXSD/heartbeat.xsd');
 
       if (!fs.existsSync(xsdPath)) {
-         console.error('❌ XSD file not found. Ensure it exists at:', xsdPath);
+         heartbeat_logger.error('XSD file not found. Ensure it exists at:', xsdPath);
+         await sendMessage("error", "500", "XSD file not found");
          return;
       }
 
       if (!validateXml(xml, xsdPath)) {
-         console.error('❌ Heartbeat XML is niet geldig tegen XSD. Bericht NIET verzonden.');
+         heartbeat_logger.error('Heartbeat XML not valid based on the XSD. Message not send.');
+         await sendMessage("error", "400", "Heartbeat XML not valid based on the XSD");
          return;
       }
 

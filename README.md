@@ -46,7 +46,7 @@ The CRM Microservice is responsible for managing customer relationship data by i
     RABBITMQ_QUEUE_HEARTBEAT=your_heartbeat_queue
     
     # ─── RabbitMQ Queues ──────────────────────────────────────────────────────
-    LOG_LEVEL=debug
+    LOG_LEVEL=info
     GENERAL_LOG_FILE=logs/general.log
     HEARTBEAT_LOG_FILE=logs/heartbeat.log
     USER_LOG_FILE=logs/user.log
