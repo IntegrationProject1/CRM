@@ -26,12 +26,14 @@ module.exports = async function SessionCDCHandler(message, sfClient, RMQChannel)
 
     console.log("Captured Session Object: ", { header: ChangeEventHeader, changes: cdcObject });
     session_logger.info("Captured Session Object: ", { header: ChangeEventHeader, changes: cdcObject });
-    await sendMessage("info","200", "Captured Session Object" );
+    await sendMessage("info","200", `Captured Session Object ${JSON.stringify({header: ChangeEventHeader, changes: cdcObject})}` );
 
     const action = ChangeEventHeader.changeType;
     const recordId = ChangeEventHeader.recordIds?.[0];
     if (!recordId && ['CREATE', 'UPDATE', 'DELETE'].includes(action)) {
-        return console.error('❌ No recordId found.');
+        session_logger.error('No recordId found for action:', action);
+        await sendMessage("error","400", 'No recordId found for action: ' + action);
+        return;
     }
 
     let UUID, JSONMsg, xmlMessage, xsdPath;
@@ -43,7 +45,8 @@ module.exports = async function SessionCDCHandler(message, sfClient, RMQChannel)
                 // Update session met UUID
                 await sfClient.sObject('Session__c')
                     .update({ Id: recordId, UUID__c: UUID });
-                console.log("✅ Session UUID updated:", UUID);
+                session_logger.info("Session UUID updated:", UUID);
+                await sendMessage("info","200", "Session UUID updated" );
 
                 // Haal Event UUID op
                 const eventResult = await sfClient.sObject("Event__c")
@@ -177,7 +180,8 @@ module.exports = async function SessionCDCHandler(message, sfClient, RMQChannel)
 
 
             default:
-                console.warn("⚠️ Unhandled action:", action);
+                session_logger.warn("Unhandled action:", action);
+                await sendMessage("warn","400", "Unhandled action: " + action);
                 return;
         }
 
@@ -200,13 +204,16 @@ module.exports = async function SessionCDCHandler(message, sfClient, RMQChannel)
 
         for (const routingKey of routingKeys) {
             RMQChannel.publish(exchangeName, routingKey, Buffer.from(xmlMessage));
-            console.log(`📤 Bericht verstuurd naar ${exchangeName} (${routingKey})`);
+            session_logger.info(`message send to ${exchangeName} (${routingKey})`);
+            await sendMessage("info","200", `Message sent to ${exchangeName} (${routingKey})`);
         }
 
     } catch (error) {
-        console.error(`❌ Fout tijdens ${action} actie:`, error.message);
+        session_logger.error(`Error during ${action} action:`, error.message);
+        await sendMessage("error","500", `Error during ${action} action: ${error.message}`);
         if (error.response?.body) {
-            console.error('Salesforce foutdetails:', error.response.body);
+            session_logger.error('Salesforce error details:', error.response.body);
+            await sendMessage("error","500", `Salesforce error details: ${JSON.stringify(error.response.body)}`);
         }
     }
 };

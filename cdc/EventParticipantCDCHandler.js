@@ -1,13 +1,16 @@
 const {jsonToXml} = require("../utils/xmlJsonTranslator");
 const validator = require("../utils/xmlValidator");
+const {event_logger} = require("../utils/logger");
+const {sendMessage} = require("../publisher/logger");
 module.exports = async function EventParticipantCDCHandler(message, sfClient, RMQChannel) {
    const {ChangeEventHeader, ...cdcObject} = message.payload;
 
    if (ChangeEventHeader.changeOrigin === "com/salesforce/api/rest/50.0") {
-      console.log("🚫 Salesforce API call detected, skipping action.");
+      event_logger.debug("Salesforce REST API call detected, skipping action.");
       return;
    }
-   console.log("Captured Event Participant Object:", {header: ChangeEventHeader, changes: cdcObject});
+   event_logger.info('Received Event Participant Object:', event_logger.info);
+   await sendMessage("info", "200", `Captured Event Participant Object: ${JSON.stringify({header: ChangeEventHeader, changes: cdcObject})}`);
    const action = ChangeEventHeader.changeType;
 
    let recordId;
@@ -16,10 +19,18 @@ module.exports = async function EventParticipantCDCHandler(message, sfClient, RM
 
    if (['CREATE', 'DELETE'].includes(action)) {
       recordId = ChangeEventHeader.recordIds?.[0];
-      if (!recordId) return console.error('❌ No recordId found.');
+      if (!recordId){
+         event_logger.error('No recordId found for action:', action);
+         await sendMessage("error", "400", 'No recordId found for action: ' + action);
+         return;
+      }
    }
 
-   if (action == 'UPDATE') return console.warn("❌ Update action not supported for Event_Participant__c.");
+   if (action === 'UPDATE') {
+      event_logger.warn("Update action not supported for Event_Participant__c.");
+      await sendMessage("warn", "400", "Update action not supported for Event_Participant__c.");
+      return;
+   }
 
 
    let eventIdQuery;
@@ -36,10 +47,14 @@ module.exports = async function EventParticipantCDCHandler(message, sfClient, RM
 
          eventIdQuery = query[0]?.Event__c;
          eventUUID = query[0]?.Event_UUID__c;
-         console.log("del result", query)
+         event_logger.debug("Event ID from deleted participant:", eventIdQuery);
+         // await sendMessage("debug", "200", `Event ID from deleted participant: ${eventIdQuery}`);
+
 
       } catch (e) {
-         return console.error("❌ No Event ID found for deleted Participant.")
+            event_logger.error("Error retrieving Event ID from deleted participant:", e.message);
+            await sendMessage("error", "500", `Error retrieving Event ID from deleted participant: ${e.message}`);
+         return;
       }
    }
 
@@ -47,7 +62,9 @@ module.exports = async function EventParticipantCDCHandler(message, sfClient, RM
    const eventId = cdcObject.Event__c || eventIdQuery;
 
    if (!eventId) {
-      return console.error("❌ No Event ID found in the CDC object for action " + action);
+        event_logger.error("No Event ID found in the CDC object for action " + action);
+        await sendMessage("error", "400", "No Event ID found in the CDC object for action " + action);
+        return;
    }
 
    // Assign an EventUUID and ContactUUID upon creation
@@ -58,15 +75,20 @@ module.exports = async function EventParticipantCDCHandler(message, sfClient, RM
             .retrieve(eventId);
 
       } catch (e) {
-         return console.log("❌ Error retrieving associated event record.");
+         event_logger.error("Error retrieving associated event record:", e.message);
+         await sendMessage("error", "500", `Error retrieving associated event record: ${e.message}`);
+         return;
       }
 
       eventUUID = eventRecord.UUID__c;
       if (!eventUUID) {
-         return console.error(`❌ No UUID found for event record: ${eventId}`);
+         event_logger.error(`No UUID found for event record: ${eventId}`);
+         await sendMessage("error", "400", `No UUID found for event record: ${eventId}`);
+         return;
       }
 
-      console.log("event record:", eventRecord)
+      event_logger.debug("Event record:", eventRecord);
+      // await sendMessage("debug", "200", `Event record: ${JSON.stringify(eventRecord)}`);
 
       let contactRecord;
       try {
@@ -74,24 +96,33 @@ module.exports = async function EventParticipantCDCHandler(message, sfClient, RM
             .retrieve(cdcObject.Contact__c);
 
       } catch (e) {
-         return console.log("❌ Error retrieving associated contact record.");
+         event_logger.error("Error retrieving associated contact record:", e.message);
+         await sendMessage("error", "500", `Error retrieving associated contact record: ${e.message}`);
+         return;
       }
 
       if (!contactRecord.UUID__c) {
-         return console.error(`❌ No UUID found for contact ID: ${cdcObject.Contact__c}`);
+            event_logger.error(`No UUID found for contact ID: ${cdcObject.Contact__c}`);
+            await sendMessage("error", "400", `No UUID found for contact ID: ${cdcObject.Contact__c}`);
+            return;
       }
 
       await sfClient.sObject("Event_Participant__c")
          .update({ Id: recordId, Event_UUID__c: eventUUID, Contact_UUID__c: contactRecord.UUID__c, Name: contactRecord.LastName || "-" });
-   } else if (action == "UNDELETE") {
+   } else if (action === "UNDELETE") {
       eventUUID = cdcObject.Event_UUID__c
    }
 
-   if (!eventUUID) return console.error("❌ Failed to retrieve the associated event UUID record for this participant using action " + action)
+   if (!eventUUID) {
+      event_logger.error("Failed to retrieve the associated event UUID record for this participant using action " + action);
+      await sendMessage("error", "400", "Failed to retrieve the associated event UUID record for this participant using action " + action);
+      return;
 
-   jsonParticipants = await getEventParticipantsAsJson(eventId);
+   }
 
-   JSONMsg = {
+   let jsonParticipants = await getEventParticipantsAsJson(eventId);
+
+   let JSONMsg = {
       UpdateEvent: {
          EventUUID: eventUUID,
          // RegisteredUsers: jsonParticipants
@@ -102,20 +133,24 @@ module.exports = async function EventParticipantCDCHandler(message, sfClient, RM
          }
       }
    };
-   console.log(JSONMsg)
+   event_logger.debug("JSON Message for Event Update:", JSONMsg);
+   // await sendMessage("debug", "200", `JSON Message for Event Update: ${JSON.stringify(JSONMsg)}`);
+
 
    // valideer XML
-   xmlMessage = jsonToXml(JSONMsg);
+   let xmlMessage = jsonToXml(JSONMsg);
    console.log(xmlMessage);
 
-   xsdPath = './xsd/eventsXSD/UpdateEvent.xsd';
+   let xsdPath = './xsd/eventsXSD/UpdateEvent.xsd';
 
    try {
       if (!validator.validateXml(xmlMessage, xsdPath)) {
          throw new Error(`XML validation failed for update`);
       }
    } catch (e) {
-      return console.error(`❌ Fout tijdens XSD validatie:`, e.message);
+      event_logger.error(`Error during XSD validation:`, e.message);
+      await sendMessage("error", "500", `Error during XSD validation: ${e.message}`);
+      return;
    }
 
    const exchangeName = 'event';
@@ -130,7 +165,9 @@ module.exports = async function EventParticipantCDCHandler(message, sfClient, RM
 
    for (const routingKey of routingKeys) {
       RMQChannel.publish(exchangeName, routingKey, Buffer.from(xmlMessage));
-      console.log(`📤 Message sent to ${exchangeName} (${routingKey})`);
+      event_logger.info(`Message sent to ${exchangeName} (${routingKey})`);
+      await sendMessage("info", "200", `Message sent to ${exchangeName} (${routingKey})`);
+
    }
 
    async function getEventParticipantsAsJson(eventId) {
@@ -141,7 +178,9 @@ module.exports = async function EventParticipantCDCHandler(message, sfClient, RM
             .where({ Event__c: eventId })
             .run();
 
-         console.log("rsult", participants)
+         event_logger.debug("Retrieved Event Participants:", participants);
+         // await sendMessage("debug", "200", `Retrieved Event Participants: ${JSON.stringify(participants)}`);
+
 
          // Map the results into a JSON message list
          const jsonMessageList = participants.map(participant => ({
@@ -151,9 +190,12 @@ module.exports = async function EventParticipantCDCHandler(message, sfClient, RM
          }));
 
          console.log("Retrieved Event Participants JSON List:", jsonMessageList);
+         event_logger.debug("Retrieved Event Participants JSON List:", jsonMessageList);
+         // await sendMessage("debug", "200", `Retrieved Event Participants JSON List: ${JSON.stringify(jsonMessageList)}`);
          return jsonMessageList;
       } catch (error) {
-         console.error("Error retrieving Event Participants:", error.message);
+         event_logger.error("Error retrieving Event Participants:", error.message);
+         await sendMessage("error", "500", `Error retrieving Event Participants: ${error.message}`);
          throw error;
       }
    }
