@@ -19,7 +19,7 @@ const {logger_logger} = require('../utils/logger');
  * sendMessage(channel, 'logExchange', 'CRM_Service', 'error', '500', 'Heartbeat error');
  */
 
-async function sendLog(channel, exchangeName, serviceName = 'CRM_Service', status_level, code, message) {
+async function sendLog(channel, exchangeName, serviceName = 'CRM', status_level, code, message) {
     //start sending messages to a RabbitMQ log exchange
     await channel.assertExchange(exchangeName, 'direct', {durable: true});
     /**
