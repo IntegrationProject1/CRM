@@ -114,7 +114,7 @@ const { general_logger } = require("./utils/logger");
 
       general_logger.info('Starting the heartbeat publisher');
       await sendMessage("info", "200", "Starting the heartbeat publisher for CRM Service");
-      await startHeartbeat(channel, heartBeatQueue, heartBeatRoutingKey, 'CRM_Service');
+      await startHeartbeat(channel, heartBeatQueue, heartBeatRoutingKey, 'CRM');
    } catch (err) {
       /**
        * Handle errors during initialization and log the error details.

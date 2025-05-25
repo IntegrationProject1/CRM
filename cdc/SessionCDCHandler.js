@@ -1,6 +1,8 @@
 require('dotenv').config();
 const { jsonToXml } = require("../utils/xmlJsonTranslator");
 const validator = require("../utils/xmlValidator");
+const {session_logger} = require("../utils/logger");
+const {sendMessage} = require("../publisher/logger");
 const hrtimeBase = process.hrtime.bigint();
 
 function generateMicroDateTime() {
@@ -18,11 +20,13 @@ module.exports = async function SessionCDCHandler(message, sfClient, RMQChannel)
 
     // Verbeterde API call detectie
     if (ChangeEventHeader.changeOrigin.includes("com/salesforce/api/rest")) {
-        console.log("🚫 Salesforce REST API call detected, skipping action.");
+        session_logger.debug("Salesforce REST API call detected, skipping action.");
         return;
     }
 
     console.log("Captured Session Object: ", { header: ChangeEventHeader, changes: cdcObject });
+    session_logger.info("Captured Session Object: ", { header: ChangeEventHeader, changes: cdcObject });
+    await sendMessage("info","200", "Captured Session Object" );
 
     const action = ChangeEventHeader.changeType;
     const recordId = ChangeEventHeader.recordIds?.[0];

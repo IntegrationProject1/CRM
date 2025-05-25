@@ -9,11 +9,11 @@ const {sendMessage} = require("./logger");
  * @param {Object} channel - RabbitMQ channel to publish messages.
  * @param {string} exchangeName - Name of the exchange to publish to.
  * @param {string} [routingKey=''] - Routing key for the message (optional).
- * @param {string} [serviceName='CRM_Service'] - Service name (optional).
+ * @param {string} [serviceName='CRM'] - Service name (optional).
  * @returns {Promise<void>} Resolves when exchange is set and interval starts.
  */
 
-async function startHeartbeat(channel, exchangeName, routingKey, serviceName = 'CRM_Service') {
+async function startHeartbeat(channel, exchangeName, routingKey, serviceName = 'CRM') {
    await channel.assertExchange(exchangeName, 'direct', {durable: true});
 
    setInterval(async () => {
