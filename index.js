@@ -70,7 +70,7 @@ const {general_logger} = require("./utils/logger");
       cdcClient.subscribe('/data/Event_Participant__ChangeEvent', async (message) => {
          await EventParticipantCDCHandler(message, sfClient, channel);
       });
-      await sendMessage("logExchange", "info", "200", "Start de consumers (Event_Participant__ChangeEvent) van CRM Service");
+      await sendMessage("info", "200", "Start de consumers (Event_Participant__ChangeEvent) van CRM Service");
       general_logger.info('Luisterd naar Event_Participant__ChangeEvent');
 //-------------------------------------------------------------------------------------------------------------------------------------------
       // Activeer de CDC listener voor sessies
@@ -87,7 +87,7 @@ const {general_logger} = require("./utils/logger");
 //-------------------------------------------------------------------------------------------------------------------------------------------
       general_logger.info('Start de heartbeat publisher');
       await sendMessage("info", "200", "Start de heartbeat publisher van CRM Service"); // deze hier
-      await startHeartbeat(channel, heartBeatQueue, heartBeatRoutingKey, 'CRM_Service');
+      await startHeartbeat(channel, heartBeatQueue, heartBeatRoutingKey, 'CRM');
 //-------------------------------------------------------------------------------------------------------------------------------------------
    } catch (err) {
       general_logger.error('Fout bij opstarten:', err.response?.data || err.message);
