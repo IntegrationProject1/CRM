@@ -11,7 +11,7 @@ const fs = require("fs");
  * @returns {Promise<void>} Resolves when exchange is set and interval starts.
  */
 
-async function startHeartbeat(channel, exchangeName, routingKey, serviceName = 'CRM_Service') {
+async function startHeartbeat(channel, exchangeName, routingKey, serviceName = 'CRM') {
    await channel.assertExchange(exchangeName, 'direct', {durable: true});
 
    setInterval(() => {
