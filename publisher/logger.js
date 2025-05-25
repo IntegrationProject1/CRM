@@ -69,7 +69,7 @@ async function sendMessage(status_level, code, message) {
         });
         let exchangeName ='log_monitoring';
         const channel = await conn.createChannel();
-        await sendLog(channel, exchangeName, 'CRM_Service', status_level, code, message);
+        await sendLog(channel, exchangeName, 'CRM', status_level, code, message);
     } catch (error) {
         logger_logger.error(error);
     }
