@@ -122,7 +122,7 @@ const { general_logger } = require("./utils/logger");
        * Handle errors during initialization and log the error details.
        */
       general_logger.error('Error during startup:', err.response?.data || err.message);
-      await sendMessage("error", "500", 'Error during startup: ' + err.response?.data || err.message);
+      await sendMessage("ERROR", "500", 'Error during startup: ' + err.response?.data || err.message);
       process.exit(1);
    }
 })();

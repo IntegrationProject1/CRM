@@ -62,7 +62,7 @@ module.exports = async function SessionCDCHandler(message, sfClient, RMQChannel)
     const recordId = ChangeEventHeader.recordIds?.[0];
     if (!recordId && ['CREATE', 'UPDATE', 'DELETE'].includes(action)) {
         session_logger.error('No recordId found for action:', action);
-        await sendMessage("error","400", 'No recordId found for action: ' + action);
+        await sendMessage("ERROR","400", 'No recordId found for action: ' + action);
         return;
     }
 
@@ -211,7 +211,7 @@ module.exports = async function SessionCDCHandler(message, sfClient, RMQChannel)
 
             default:
                 session_logger.warn("Unhandled action:", action);
-                await sendMessage("warn","400", "Unhandled action: " + action);
+                await sendMessage("WARNING","400", "Unhandled action: " + action);
                 return;
         }
 
@@ -241,10 +241,10 @@ module.exports = async function SessionCDCHandler(message, sfClient, RMQChannel)
 
     } catch (error) {
         session_logger.error(`Error during ${action} action:`, error.message);
-        await sendMessage("error","500", `Error during ${action} action: ${error.message}`);
+        await sendMessage("ERROR","500", `Error during ${action} action: ${error.message}`);
         if (error.response?.body) {
             session_logger.error('Salesforce error details:', error.response.body);
-            await sendMessage("error","500", `Salesforce error details: ${JSON.stringify(error.response.body)}`);
+            await sendMessage("ERROR","500", `Salesforce error details: ${JSON.stringify(error.response.body)}`);
         }
     }
 };

@@ -35,14 +35,14 @@ module.exports = async function SessionParticipantCDCHandler(message, sfClient, 
         recordId = ChangeEventHeader.recordIds?.[0];
         if (!recordId) {
             session_logger.error('No recordId found for action:', action);
-            await sendMessage("error", "400", 'No recordId found for action: ' + action);
+            await sendMessage("ERROR", "400", 'No recordId found for action: ' + action);
             return;
         }
     }
 
     if (action === 'UPDATE') {
         session_logger.warn("Update action not supported for Session_Participant__c.");
-        await sendMessage("warn", "400", "Update action not supported for Session_Participant__c.");
+        await sendMessage("WARNING", "400", "Update action not supported for Session_Participant__c.");
         return;
     }
 
@@ -73,7 +73,7 @@ module.exports = async function SessionParticipantCDCHandler(message, sfClient, 
 
         } catch (e) {
             session_logger.error("Error retrieving deleted participant session:", e.message);
-            await sendMessage("error", "500", `Error retrieving deleted participant session: ${e.message}`);
+            await sendMessage("ERROR", "500", `Error retrieving deleted participant session: ${e.message}`);
             return;
         }
     }
@@ -82,7 +82,7 @@ module.exports = async function SessionParticipantCDCHandler(message, sfClient, 
     const sessionId = cdcObject.Session__c || sessionIdQuery;
     if (!sessionId) {
         session_logger.error("No Session ID found in the CDC object for action " + action);
-        await sendMessage("error", "400", "No Session ID found in the CDC object for action " + action);
+        await sendMessage("ERROR", "400", "No Session ID found in the CDC object for action " + action);
         return;
     }
 
@@ -98,7 +98,7 @@ module.exports = async function SessionParticipantCDCHandler(message, sfClient, 
 
             if (!sessionUUID || !eventUUID) {
                 session_logger.error(`Missing UUIDs for Session (${sessionId})`);
-                await sendMessage("error", "400", `Missing UUIDs for Session (${sessionId})`);
+                await sendMessage("ERROR", "400", `Missing UUIDs for Session (${sessionId})`);
                 return;
             }
 
@@ -121,7 +121,7 @@ module.exports = async function SessionParticipantCDCHandler(message, sfClient, 
 
         } catch (e) {
             session_logger.error("Error processing CREATE action:", e.message);
-            await sendMessage("error", "500", `Error processing CREATE action: ${e.message}`);
+            await sendMessage("ERROR", "500", `Error processing CREATE action: ${e.message}`);
             return;
         }
     } else if (action === 'UNDELETE') {
@@ -135,14 +135,14 @@ module.exports = async function SessionParticipantCDCHandler(message, sfClient, 
 
         } catch (e) {
             session_logger.error("Error retrieving session for UNDELETE:", e.message);
-            await sendMessage("error", "500", `Error retrieving session for UNDELETE: ${e.message}`);
+            await sendMessage("ERROR", "500", `Error retrieving session for UNDELETE: ${e.message}`);
             return;
         }
     }
 
     if (!sessionUUID || !eventUUID) {
         session_logger.error("Missing critical UUIDs for processing");
-        await sendMessage("error", "400", "Missing critical UUIDs for processing");
+        await sendMessage("ERROR", "400", "Missing critical UUIDs for processing");
         return;
     }
 
@@ -169,7 +169,7 @@ module.exports = async function SessionParticipantCDCHandler(message, sfClient, 
         }
     } catch (e) {
         session_logger.error("XML validation error:", e.message);
-        await sendMessage("error", "400", `XML validation error: ${e.message}`);
+        await sendMessage("ERROR", "400", `XML validation error: ${e.message}`);
         return;
     }
 
@@ -202,7 +202,7 @@ module.exports = async function SessionParticipantCDCHandler(message, sfClient, 
 
         } catch (error) {
             session_logger.error("❌ Failed to fetch participants:", error.message);
-            await sendMessage("error", "500", `Failed to fetch participants: ${error.message}`);
+            await sendMessage("ERROR", "500", `Failed to fetch participants: ${error.message}`);
             throw error;
         }
     }

@@ -57,7 +57,7 @@ async function formatAddress(address) {
       });
    } catch (error) {
       user_logger.error('Address conversion error:', error);
-      await sendMessage("error", "500", `Address conversion error: ${error.message}`);
+      await sendMessage("ERROR", "500", `Address conversion error: ${error.message}`);
       return "";
    }
 }
@@ -103,7 +103,7 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
       if (!recordId) {
          user_logger.error('❌ Geen recordId gevonden.');
          console.error('❌ Geen recordId gevonden.');
-         await sendMessage("error", "400", 'No recordId found for action: ' + action);
+         await sendMessage("ERROR", "400", 'No recordId found for action: ' + action);
          return;
       }
    }
@@ -221,7 +221,7 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
 
          default:
             user_logger.warn("Unhandled action:", action);
-            await sendMessage("warn", "400", `Unhandled action: ${action}`);
+            await sendMessage("WARNING", "400", `Unhandled action: ${action}`);
 
             return;
       }

@@ -54,7 +54,7 @@ module.exports = async function StartSessionConsumer(channel, salesforceClient) 
          } catch (e) {
             channel.nack(msg, false, false);
             session_logger.error(`[${action}SessionConsumer] Invalid XML formate: ${content}`);
-            await sendMessage("error", "400", `[${action}SessionConsumer] Invalid XML formate: ${content}`);
+            await sendMessage("ERROR", "400", `[${action}SessionConsumer] Invalid XML formate: ${content}`);
             return;
          }
 
@@ -64,7 +64,7 @@ module.exports = async function StartSessionConsumer(channel, salesforceClient) 
          if (!rabbitMQMsg) {
             channel.nack(msg, false, false);
             session_logger.error(`[${action}SessionConsumer] Invalid XML root: ${JSON.stringify(rabbitMQMsg)}`);
-            await sendMessage("error", "400", `[${action}SessionConsumer] Invalid XML root: ${JSON.stringify(rabbitMQMsg)}`);
+            await sendMessage("ERROR", "400", `[${action}SessionConsumer] Invalid XML root: ${JSON.stringify(rabbitMQMsg)}`);
             return;
          }
 
@@ -80,14 +80,14 @@ module.exports = async function StartSessionConsumer(channel, salesforceClient) 
             } catch (err) {
                channel.nack(msg, false, false);
                session_logger.error(`[${action}SessionConsumer] Error fetching Salesforce Session ID: ${err.message}`);
-               await sendMessage("error", "500", `[${action}SessionConsumer] Error fetching Salesforce Session ID: ${err.message}`);
+               await sendMessage("ERROR", "500", `[${action}SessionConsumer] Error fetching Salesforce Session ID: ${err.message}`);
                return;
             }
 
             if (!result || result.length === 0) {
                channel.nack(msg, false, false);
                session_logger.error(`[${action}SessionConsumer] No Salesforce Session found for UUID: ${rabbitMQMsg.SessionUUID}`);
-               await sendMessage("error", "404", `[${action}SessionConsumer] No Salesforce Session found for UUID: ${rabbitMQMsg.SessionUUID}`);
+               await sendMessage("ERROR", "404", `[${action}SessionConsumer] No Salesforce Session found for UUID: ${rabbitMQMsg.SessionUUID}`);
                return;
             }
             SalesforceObjId = result[0].Id;
@@ -146,7 +146,7 @@ module.exports = async function StartSessionConsumer(channel, salesforceClient) 
                } catch (err) {
                   channel.nack(msg, false, false);
                   session_logger.error(`[${action}SessionConsumer] Error creating session in Salesforce: ${err.message}`);
-                  await sendMessage("error", "500", `[${action}SessionConsumer] Error creating session in Salesforce: ${err.message}`);
+                  await sendMessage("ERROR", "500", `[${action}SessionConsumer] Error creating session in Salesforce: ${err.message}`);
                   return;
                }
                break;
@@ -214,7 +214,7 @@ module.exports = async function StartSessionConsumer(channel, salesforceClient) 
                } catch (err) {
                   channel.nack(msg, false, false);
                   session_logger.error("Error when updating", err.message);
-                  await sendMessage("error", "500", `Error when updating session in Salesforce: ${err.message}`);
+                  await sendMessage("ERROR", "500", `Error when updating session in Salesforce: ${err.message}`);
                   return;
                }
                break;
@@ -227,7 +227,7 @@ module.exports = async function StartSessionConsumer(channel, salesforceClient) 
                } catch (err) {
                   channel.nack(msg, false, false);
                   session_logger.error(`[${action}SessionConsumer] Error deleting session in Salesforce: ${err.message}`);
-                  await sendMessage("error", "500", `Error deleting session in Salesforce: ${err.message}`);
+                  await sendMessage("ERROR", "500", `Error deleting session in Salesforce: ${err.message}`);
                   return;
                }
                break;
@@ -235,7 +235,7 @@ module.exports = async function StartSessionConsumer(channel, salesforceClient) 
             default:
                channel.nack(msg, false, false);
                session_logger.error(`[${action}SessionConsumer] Ongeldige queue: ${action}`);
-               await sendMessage("error", "400", `[${action}SessionConsumer] Ongeldige queue: ${action}`);
+               await sendMessage("ERROR", "400", `[${action}SessionConsumer] Ongeldige queue: ${action}`);
                return;
          }
 

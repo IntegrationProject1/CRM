@@ -63,7 +63,7 @@ module.exports = async function EventCDCHandler(message, sfClient, RMQChannel) {
       recordId = ChangeEventHeader.recordIds?.[0];
       if (!recordId) {
          event_logger.error('No recordId found for action:', action);
-         await sendMessage("error", "400", 'No recordId found for action: ' + action);
+         await sendMessage("ERROR", "400", 'No recordId found for action: ' + action);
          return;
       }
    }
@@ -151,7 +151,7 @@ module.exports = async function EventCDCHandler(message, sfClient, RMQChannel) {
 
          default:
             event_logger.warning("Unhandled action:", action);
-            await sendMessage("warn", "400", `Unhandled action: ${action}`);
+            await sendMessage("WARNING", "400", `Unhandled action: ${action}`);
             return;
       }
 
@@ -180,10 +180,10 @@ module.exports = async function EventCDCHandler(message, sfClient, RMQChannel) {
 
    } catch (error) {
       event_logger.error(`❌ Critical error during ${action} action:`, error.message);
-      await sendMessage("error", "500", `Critical error during ${action} action: ${error.message}`);
+      await sendMessage("ERROR", "500", `Critical error during ${action} action: ${error.message}`);
       if (error.response?.body) {
          event_logger.error('Salesforce API error details:', error.response.body);
-         await sendMessage("error", "500", `Salesforce API error details: ${JSON.stringify(error.response.body)}`);
+         await sendMessage("ERROR", "500", `Salesforce API error details: ${JSON.stringify(error.response.body)}`);
       }
    }
 };
