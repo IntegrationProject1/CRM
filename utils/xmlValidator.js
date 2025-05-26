@@ -1,14 +1,20 @@
+/**
+ * Validates an XML string against an XSD schema.
+ * @module xmlValidator
+ * @file utils/xmlValidator.js
+ * @description Provides a function to validate XML strings against XSD schemas.
+ * @requires libxmljs - A library for parsing and validating XML documents.
+ * @requires fs - Node.js file system module for reading files.
+ * @requires path - Node.js path module for resolving file paths.
+ * @requires general_logger - A logger for general application logging.
+ * @requires sendMessage - A function to send messages to a message queue or logging service.
+ */
+
 const libxmljs = require('libxmljs2');
 const fs = require('fs');
 const path = require('path');
 const {general_logger} = require("./logger");
 const {sendMessage} = require("../publisher/logger");
-
-/**
- * Module for validating XML against XSD schemas.
- * Provides functionality to ensure XML data conforms to specified XSD structures.
- * @module xmlValidator
- */
 
 /**
  * Validates an XML string against an XSD schema.

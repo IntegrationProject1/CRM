@@ -1,5 +1,9 @@
 /**
  * Logger module for CRM Service
+ * @module logger
+ * @description Provides logging functionality for various services in the CRM system.
+ * @requires dotenv - Loads environment variables from a `.env` file.
+ * @requires pino - A fast and lightweight logger for Node.js.
  */
 
 
@@ -13,6 +17,8 @@ const pino = require('pino');
  * @param {string} logFilePath - Path to the log file.
  * @param {string} level - Log level (e.g., 'info', 'error').
  * @return {Object} Pino transport object.
+ * @example
+ * const transport = createTransport('./logs/app.log', 'info');
  */
 function createTransport(logFilePath, level) {
     return pino.transport({
@@ -44,6 +50,8 @@ function createTransport(logFilePath, level) {
  * @param {string} level - Log level (e.g., 'info', 'error').
  * @param {string} logFilePath - Path to the log file.
  * @return {Object} Pino logger instance.
+ * @example
+ * const logger = createLogger('myLogger', 'info', './logs/myLogger.log');
  */
 function createLogger(name, level = 'info', logFilePath) {
     return pino({
@@ -66,6 +74,9 @@ function createLogger(name, level = 'info', logFilePath) {
  * (this means that the logger can log with a status code but is not required)
  * @param {Object} logger - Pino logger instance.
  * @return {Object} Wrapped logger instance.
+ * @example
+ * const wrappedLogger = wrapLoggerWithStatusCode(logger);
+ * wrappedLogger.info('Message', '200'); // Logs with status code
  */
 function wrapLoggerWithStatusCode(logger) {
     const levels = ['fatal', 'error', 'warn', 'info', 'debug', 'trace'];
