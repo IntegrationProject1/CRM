@@ -2,6 +2,8 @@
  * Salesforce CDC Listener
  * @module cdcListener
  * @file cdc/cdcListener.js
+ * @description Listens to Salesforce Change Data Capture (CDC) events and processes them using the appropriate handlers.
+ * @requires ContactCDCHandler - A handler for processing Contact CDC events.
  */
 
 const ContactCDCHandler = require('./ContactCDCHandler'); // ✅ importeer de handler
@@ -9,10 +11,14 @@ const ContactCDCHandler = require('./ContactCDCHandler'); // ✅ importeer de ha
 let subscription; // 🔁 globale verwijzing voor stop()<
 
 /**
- * Start de Salesforce CDC Listener
- * @param {Object} sfClient - Ingelogde SalesforceClient instantie
- * @param {Object} channel - RabbitMQ kanaal
- * @returns {Promise<void>} - Een belofte die wordt vervuld wanneer de listener is gestart
+ * Start the Salesforce CDC Listener.
+ * @param {Object} sfClient - Logged-in SalesforceClient instance.
+ * @param {Object} channel - RabbitMQ channel.
+ * @returns {Promise<void>} - A promise that resolves when the listener has started.
+ * @example
+ * startCDCListener(sfClient, channel)
+ *  .then(() => console.log("CDC Listener started"))
+ *  .catch(err => console.error("Error starting CDC Listener:", err));
  */
 async function startCDCListener(sfClient, channel) {
   try {
@@ -31,7 +37,12 @@ async function startCDCListener(sfClient, channel) {
 }
 
 /**
- * Stop de actieve CDC listener (bijv. na een test)
+ * Stop the active CDC listener (e.g., after a test).
+ * @returns {Promise<void>} - A promise that resolves when the listener has stopped.
+ * @example
+ * stopCDCListener()
+ *  .then(() => console.log("CDC Listener stopped"))
+ *  .catch(err => console.error("Error stopping CDC Listener:", err));
  */
 async function stopCDCListener() {
   if (subscription) {

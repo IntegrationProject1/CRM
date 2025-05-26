@@ -1,7 +1,15 @@
 /**
- * User CDC Handler
+ * Contact CDC Handler
  * @module ContactCDCHandler
- *
+ * @file cdc/ContactCDCHandler.js
+ * @description Processes Salesforce Change Data Capture (CDC) messages for Contact objects and publishes them to RabbitMQ.
+ * @requires dotenv - Loads environment variables from a `.env` file.
+ * @requires jsonToXml - A utility for converting JSON objects to XML format.
+ * @requires validator - A utility for validating XML against an XSD schema.
+ * @requires hrtimeBase - A base time for generating microsecond precision timestamps.
+ * @requires jsonToAddress - A utility for converting Salesforce address objects to a standardized string format.
+ * @requires user_logger - A logger for logging events in the ContactCDCHandler.
+ * @requires sendMessage - A function to send messages to the RabbitMQ queue.
  */
 
 require('dotenv').config();
@@ -13,23 +21,22 @@ const {user_logger} = require("../utils/logger");
 const {sendMessage} = require("../publisher/logger");
 
 /**
- * Formats a Salesforce address object into a standardized string format. (for fix update)
- * @param address
- * @returns {string}
+ * Formats a Salesforce address object into a standardized string format.
+ * @param {Object} address - The Salesforce address object.
+ * @returns {string} - The formatted address string.
  * @example
  * const address = {
- *    Street: "Hoofdstraat",
+ *    Street: "Main Street",
  *    HouseNumber: "123",
  *    BusCode: "A",
  *    City: "Amsterdam",
- *    State: "Noord-Holland",
+ *    State: "North Holland",
  *    PostalCode: "1012AB",
- *    Country: "Nederland"
- *    };
+ *    Country: "Netherlands"
+ * };
  * const formattedAddress = formatAddress(address);
  * console.log(formattedAddress);
- * // "Hoofdstraat 123 A, Amsterdam, Noord-Holland, 1012AB, Nederland"
- *
+ * // "Main Street 123 A, Amsterdam, North Holland, 1012AB, Netherlands"
  */
 async function formatAddress(address) {
    if (!address || !address.Street) return "";
@@ -57,6 +64,7 @@ async function formatAddress(address) {
 
 /**
  * Generates the current ISO 8601 timestamp with microsecond precision.
+ * @returns {string} - The generated timestamp.
  */
 function generateMicroDateTime() {
    const diffNs = process.hrtime.bigint() - hrtimeBase;
@@ -69,8 +77,11 @@ function generateMicroDateTime() {
 }
 
 /**
- * @module ContactCDCHandler
- * @description Verwerkt Salesforce CDC-berichten voor Contact-objecten en publiceert ze naar RabbitMQ.
+ * Processes Salesforce CDC messages for Contact objects and publishes them to RabbitMQ.
+ * @param {Object} message - The CDC message payload.
+ * @param {Object} sfClient - The Salesforce client for interacting with Salesforce.
+ * @param {Object} RMQChannel - The RabbitMQ channel for publishing messages.
+ * @returns {Promise<void>} - A promise that resolves when the message is processed.
  */
 module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel) {
    const { ChangeEventHeader, ...cdcObjectData } = message.payload;

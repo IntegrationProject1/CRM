@@ -1,3 +1,16 @@
+/**
+ * Session CDC Handler
+ * @module SessionCDCHandler
+ * @file cdc/SessionCDCHandler.js
+ * @description Handles Salesforce Change Data Capture (CDC) messages for Session objects and publishes updates to RabbitMQ.
+ * @requires dotenv - Loads environment variables from a `.env` file.
+ * @requires jsonToXml - A utility for converting JSON objects to XML format.
+ * @requires validator - A module for validating XML against an XSD schema.
+ * @requires session_logger - A logger for logging events in the SessionCDCHandler.
+ * @requires sendMessage - A function to send messages to the RabbitMQ queue.
+ * @requires hrtimeBase - A base time for generating microsecond precision timestamps.
+ */
+
 require('dotenv').config();
 const { jsonToXml } = require("../utils/xmlJsonTranslator");
 const validator = require("../utils/xmlValidator");
@@ -5,6 +18,13 @@ const {session_logger} = require("../utils/logger");
 const {sendMessage} = require("../publisher/logger");
 const hrtimeBase = process.hrtime.bigint();
 
+/**
+ * Generates the current ISO 8601 timestamp with microsecond precision.
+ * @returns {string} - The generated timestamp.
+ * @example
+ * const timestamp = generateMicroDateTime();
+ * console.log(timestamp); // "2023-10-05T12:34:56.789123Z"
+ */
 function generateMicroDateTime() {
     const diffNs = process.hrtime.bigint() - hrtimeBase;
     const micros = Number((diffNs / 1000n) % 1000000n);
@@ -14,7 +34,17 @@ function generateMicroDateTime() {
     const micros2 = timestamp % 1000;
     return now.toISOString().replace('Z', micros2.toString().padStart(3, '0') + 'Z');
 }
-
+/**
+ * Processes Salesforce CDC messages for Session objects and publishes updates to RabbitMQ.
+ * @param {Object} message - The Salesforce CDC message.
+ * @param {Object} sfClient - The Salesforce client for interacting with Salesforce.
+ * @param {Object} RMQChannel - The RabbitMQ channel for publishing messages.
+ * @returns {Promise<void>} - A promise that resolves when the message is processed.
+ * @example
+ * SessionCDCHandler(message, sfClient, RMQChannel)
+ *  .then(() => console.log("Session processed successfully"))
+ *  .catch(err => console.error("Error processing session:", err));
+ */
 module.exports = async function SessionCDCHandler(message, sfClient, RMQChannel) {
     const { ChangeEventHeader, ...cdcObject } = message.payload;
 

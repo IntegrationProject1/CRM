@@ -1,15 +1,29 @@
+/**
+ * Session Participant CDC Handler
+ * @module SessionParticipantCDCHandler
+ * @file cdc/SessionParticipantCDCHandler.js
+ * @description Handles Salesforce Change Data Capture (CDC) messages for Session Participant objects and publishes updates to RabbitMQ.
+ * @requires xmlJsonTranslator - A module for converting JSON to XML.
+ * @requires validator - A module for validating XML against an XSD schema.
+ * @requires session_logger - A logger for logging events in the SessionParticipantCDCHandler.
+ * @requires sendMessage - A function to send messages to the RabbitMQ queue.
+ */
+
 const { jsonToXml } = require("../utils/xmlJsonTranslator");
 const validator = require("../utils/xmlValidator");
+const {session_logger} = require("../utils/logger");
+const {sendMessage} = require("../publisher/logger");
 
 module.exports = async function SessionParticipantCDCHandler(message, sfClient, RMQChannel) {
     const { ChangeEventHeader, ...cdcObject } = message.payload;
 
     if (ChangeEventHeader.changeOrigin === "com/salesforce/api/rest/50.0") {
-        console.log("🚫 Salesforce API call detected, skipping action.");
+        session_logger.debug("Salesforce API call detected, skipping action.");
         return;
     }
 
-    console.log("Captured Session Participant Object:", { header: ChangeEventHeader, changes: cdcObject });
+    session_logger.info('Captured Session Participant Object:', { header: ChangeEventHeader, changes: cdcObject });
+    await sendMessage("info", "200", `Captured Session Participant Object: ${JSON.stringify({ header: ChangeEventHeader, changes: cdcObject })}`);
     const action = ChangeEventHeader.changeType;
 
     let recordId;
@@ -19,10 +33,18 @@ module.exports = async function SessionParticipantCDCHandler(message, sfClient, 
 
     if (['CREATE', 'DELETE'].includes(action)) {
         recordId = ChangeEventHeader.recordIds?.[0];
-        if (!recordId) return console.error('❌ No recordId found.');
+        if (!recordId) {
+            session_logger.error('No recordId found for action:', action);
+            await sendMessage("error", "400", 'No recordId found for action: ' + action);
+            return;
+        }
     }
 
-    if (action === 'UPDATE') return console.warn("❌ Update action not supported for Session_Participant__c.");
+    if (action === 'UPDATE') {
+        session_logger.warn("Update action not supported for Session_Participant__c.");
+        await sendMessage("warn", "400", "Update action not supported for Session_Participant__c.");
+        return;
+    }
 
     let sessionIdQuery;
 
@@ -50,14 +72,18 @@ module.exports = async function SessionParticipantCDCHandler(message, sfClient, 
             }
 
         } catch (e) {
-            return console.error("❌ Error retrieving deleted participant session:", e.message);
+            session_logger.error("Error retrieving deleted participant session:", e.message);
+            await sendMessage("error", "500", `Error retrieving deleted participant session: ${e.message}`);
+            return;
         }
     }
 
     // Get sessionId from CDC data or deletion query
     const sessionId = cdcObject.Session__c || sessionIdQuery;
     if (!sessionId) {
-        return console.error("❌ No Session ID found for action " + action);
+        session_logger.error("No Session ID found in the CDC object for action " + action);
+        await sendMessage("error", "400", "No Session ID found in the CDC object for action " + action);
+        return;
     }
 
     // Handle CREATE/UNDELETE actions
@@ -71,7 +97,9 @@ module.exports = async function SessionParticipantCDCHandler(message, sfClient, 
             eventUUID = sessionRecord.Event__r?.UUID__c;
 
             if (!sessionUUID || !eventUUID) {
-                return console.error(`❌ Missing UUIDs for Session (${sessionId})`);
+                session_logger.error(`Missing UUIDs for Session (${sessionId})`);
+                await sendMessage("error", "400", `Missing UUIDs for Session (${sessionId})`);
+                return;
             }
 
             // Retrieve Contact email
@@ -92,7 +120,9 @@ module.exports = async function SessionParticipantCDCHandler(message, sfClient, 
                 });
 
         } catch (e) {
-            return console.error("❌ Error processing CREATE:", e.message);
+            session_logger.error("Error processing CREATE action:", e.message);
+            await sendMessage("error", "500", `Error processing CREATE action: ${e.message}`);
+            return;
         }
     } else if (action === 'UNDELETE') {
         try {
@@ -104,12 +134,16 @@ module.exports = async function SessionParticipantCDCHandler(message, sfClient, 
             eventUUID = sessionRecord.Event__r?.UUID__c;
 
         } catch (e) {
-            return console.error("❌ Error retrieving session for UNDELETE");
+            session_logger.error("Error retrieving session for UNDELETE:", e.message);
+            await sendMessage("error", "500", `Error retrieving session for UNDELETE: ${e.message}`);
+            return;
         }
     }
 
     if (!sessionUUID || !eventUUID) {
-        return console.error("❌ Missing critical UUIDs for processing");
+        session_logger.error("Missing critical UUIDs for processing");
+        await sendMessage("error", "400", "Missing critical UUIDs for processing");
+        return;
     }
 
     // Build JSON message
@@ -133,7 +167,9 @@ module.exports = async function SessionParticipantCDCHandler(message, sfClient, 
             throw new Error("XML validation failed");
         }
     } catch (e) {
-        return console.error("❌ XML validation error:", e.message);
+        session_logger.error("XML validation error:", e.message);
+        await sendMessage("error", "400", `XML validation error: ${e.message}`);
+        return;
     }
 
     // Publish to RabbitMQ
@@ -148,7 +184,8 @@ module.exports = async function SessionParticipantCDCHandler(message, sfClient, 
 
     for (const routingKey of routingKeys) {
         RMQChannel.publish(exchangeName, routingKey, Buffer.from(xmlMessage));
-        console.log(`📤 Sent to ${exchangeName} (${routingKey})`);
+        session_logger.info(`Sent to ${exchangeName} (${routingKey})`);
+        await sendMessage("info", "200", `Sent to ${exchangeName} (${routingKey})`);
     }
 
     async function getSessionParticipants(sessionId) {
@@ -163,7 +200,8 @@ module.exports = async function SessionParticipantCDCHandler(message, sfClient, 
             }));
 
         } catch (error) {
-            console.error("❌ Failed to fetch participants:", error);
+            session_logger.error("❌ Failed to fetch participants:", error.message);
+            await sendMessage("error", "500", `Failed to fetch participants: ${error.message}`);
             throw error;
         }
     }

@@ -1,3 +1,15 @@
+/**
+ * Event CDC Handler
+ * @module EventCDCHandler
+ * @file cdc/EventCDCHandler.js
+ * @description Handles Salesforce Change Data Capture (CDC) messages for Event objects and publishes them to RabbitMQ.
+ * @requires dotenv - Loads environment variables from a `.env` file.
+ * @requires xmlJsonTranslator - A module for converting JSON to XML.
+ * @requires validator - A module for validating XML against an XSD schema.
+ * @requires event_logger - A logger for logging events in the EventCDCHandler.
+ * @requires sendMessage - A function to send messages to the RabbitMQ queue.
+ */
+
 require('dotenv').config();
 const { jsonToXml } = require("../utils/xmlJsonTranslator");
 const validator = require("../utils/xmlValidator");
@@ -7,7 +19,10 @@ const hrtimeBase = process.hrtime.bigint();
 
 /**
  * Generates the current ISO 8601 timestamp with microsecond precision.
- * @returns {string} ISO 8601 date-time string with microseconds.
+ * @returns {string} - The generated timestamp.
+ * @example
+ * const timestamp = generateMicroDateTime();
+ * console.log(timestamp); // "2023-10-05T12:34:56.789123Z"
  */
 function generateMicroDateTime() {
    const diffNs = process.hrtime.bigint() - hrtimeBase;
@@ -20,12 +35,15 @@ function generateMicroDateTime() {
 }
 
 /**
- * @module EventCDCHandler
- * @description Handles Salesforce CDC messages for Event objects and publishes them to RabbitMQ.
+ * Processes Salesforce CDC messages for Event objects and publishes them to RabbitMQ.
  * @param {Object} message - The Salesforce CDC message.
  * @param {Object} sfClient - The Salesforce client for interacting with Salesforce.
  * @param {Object} RMQChannel - The RabbitMQ channel for publishing messages.
- * @returns {Promise<void>}
+ * @returns {Promise<void>} - A promise that resolves when the message is processed.
+ * @example
+ * EventCDCHandler(message, sfClient, RMQChannel)
+ *  .then(() => console.log("Event processed successfully"))
+ *  .catch(err => console.error("Error processing event:", err));
  */
 module.exports = async function EventCDCHandler(message, sfClient, RMQChannel) {
    const { ChangeEventHeader, ...cdcObject } = message.payload;

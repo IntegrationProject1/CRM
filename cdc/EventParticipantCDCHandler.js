@@ -1,7 +1,30 @@
+/**
+ * Event Participant CDC Handler
+ * @module EventParticipantCDCHandler
+ * @file cdc/EventParticipantCDCHandler.js
+ * @description Handles Salesforce Change Data Capture (CDC) messages for Event Participant objects and publishes updates to RabbitMQ.
+ * @requires xmlJsonTranslator - A module for converting JSON to XML.
+ * @requires validator - A module for validating XML against an XSD schema.
+ * @requires event_logger - A logger for logging events in the EventParticipantCDCHandler.
+ * @requires sendMessage - A function to send messages to the RabbitMQ queue.
+ */
+
 const {jsonToXml} = require("../utils/xmlJsonTranslator");
 const validator = require("../utils/xmlValidator");
 const {event_logger} = require("../utils/logger");
 const {sendMessage} = require("../publisher/logger");
+
+/**
+ * Processes Salesforce CDC messages for Event Participant objects and publishes updates to RabbitMQ.
+ * @param {Object} message - The Salesforce CDC message.
+ * @param {Object} sfClient - The Salesforce client for interacting with Salesforce.
+ * @param {Object} RMQChannel - The RabbitMQ channel for publishing messages.
+ * @returns {Promise<void>} - A promise that resolves when the message is processed.
+ * @example
+ * EventParticipantCDCHandler(message, sfClient, RMQChannel)
+ *  .then(() => console.log("Event Participant processed successfully"))
+ *  .catch(err => console.error("Error processing Event Participant:", err));
+ */
 module.exports = async function EventParticipantCDCHandler(message, sfClient, RMQChannel) {
    const {ChangeEventHeader, ...cdcObject} = message.payload;
 
