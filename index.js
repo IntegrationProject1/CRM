@@ -10,7 +10,7 @@
  * @author Karim
  * @author Aiden
  *
- * @copyright Copyright (c) 2023, Team 4, Fontys ICT
+ * @copyright Copyright (c) 2023, E-xpo
  * @license Apache-2.0
  */
 
