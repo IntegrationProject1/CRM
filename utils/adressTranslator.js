@@ -1,6 +1,8 @@
 /**
+ * translates address strings to JSON objects and vice versa.
  * @module AddressTranslator
- *
+ * @file utils/addressTranslator.js
+ * @description Provides functions to convert address strings to JSON objects and vice versa.
  */
 
 /**
@@ -50,8 +52,6 @@ function jsonToAddress(data) {
  * const address = 'straat a 20 b';
  * const parsed = parseStreet(address);
  */
-
-
 function parseStreet(address) {
     if (!address) return { street: '', houseNumber: '', busCode: null };
 
@@ -65,24 +65,6 @@ function parseStreet(address) {
         busCode: (match?.[3] || '').trim() || null
     };
 }
-
-
-
-// Example usage
-// const address = 'belguim;flanders;3000;leuven;straat;1;b;';
-// const json = {
-//     State: 'province',
-//     Street: 'straat a 20 b',
-//     PostalCode: '3000',
-//     Country: 'belguim',
-//     City: 'leuven'
-// };
-//
-// const newAddress = addressToJson(address);
-// console.log("newAddress:", newAddress);
-//
-// const newJson = jsonToAddress(json);
-// console.log("newJson:", newJson);
 
 module.exports = {
     addressToJson,

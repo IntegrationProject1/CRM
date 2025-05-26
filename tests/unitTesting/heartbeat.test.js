@@ -21,7 +21,7 @@ describe('startHeartbeat', () => {
     });
 
     test('should publish heartbeat if XML is valid', async () => {
-        validateXml.mockReturnValue(true);
+        validateXml.mockReturnValue({ isValid: true });
 
         await startHeartbeat(mockChannel, 'heartbeatExchange', 'heartbeat.key', 'CRM_Service');
 
@@ -44,7 +44,13 @@ describe('startHeartbeat', () => {
     });
 
     test('should not publish heartbeat if XML is invalid', async () => {
-        validateXml.mockReturnValue(false);
+        validateXml.mockReturnValue({ 
+            isValid: false,
+            errorType: 'error',
+            errorCode: '400',
+            errorMessage: 'XML validation failed',
+            validationErrors: ['Invalid XML structure']
+        });
 
         await startHeartbeat(mockChannel, 'heartbeatExchange', 'heartbeat.key', 'CRM_Service');
 

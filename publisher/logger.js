@@ -1,3 +1,14 @@
+/**
+ * Logger module for sending messages to RabbitMQ.
+ * @module Logger
+ * @file publisher/logger.js
+ * @description Sends log messages to a RabbitMQ exchange for monitoring and debugging purposes.
+ * @requires path - Provides utilities for working with file and directory paths.
+ * @requires amqp - A library for interacting with RabbitMQ.
+ * @requires validateXml - A utility function for validating XML against an XSD schema.
+ * @requires logger_logger - A logger for logging events in the Logger module.
+ */
+
 const path = require('path');
 const amqp = require('amqplib');
 
@@ -19,7 +30,7 @@ const {logger_logger} = require('../utils/logger');
  * sendMessage(channel, 'logExchange', 'CRM_Service', 'error', '500', 'Heartbeat error');
  */
 
-async function sendLog(channel, exchangeName, serviceName = 'CRM_Service', status_level, code, message) {
+async function sendLog(channel, exchangeName, serviceName = 'CRM', status_level, code, message) {
     //start sending messages to a RabbitMQ log exchange
     await channel.assertExchange(exchangeName, 'direct', {durable: true});
     /**
@@ -39,7 +50,8 @@ async function sendLog(channel, exchangeName, serviceName = 'CRM_Service', statu
      */
     const xsdPath = path.join(__dirname, '../xsd/loggerXSD/logger.xsd');
 
-    if (!validateXml(xml, xsdPath)) {
+    const validationResult = validateXml(xml, xsdPath);
+    if (!validationResult.isValid) {
         logger_logger.error('The XML is not valid against the XSD. Message NOT sent.');
         return;
     }
@@ -55,7 +67,7 @@ async function sendLog(channel, exchangeName, serviceName = 'CRM_Service', statu
  * @param {string} message - Message content.
  * @returns {Promise<void>} Resolves when the message is sent.
  * @example
- * sendMessage('logExchange', 'info', '200', 'Heartbeat message');
+ * sendMessage('info', '200', 'Heartbeat message');
  */
 async function sendMessage(status_level, code, message) {
     try {
@@ -69,7 +81,7 @@ async function sendMessage(status_level, code, message) {
         });
         let exchangeName ='log_monitoring';
         const channel = await conn.createChannel();
-        await sendLog(channel, exchangeName, 'CRM_Service', status_level, code, message);
+        await sendLog(channel, exchangeName, 'CRM', status_level, code, message);
     } catch (error) {
         logger_logger.error(error);
     }
