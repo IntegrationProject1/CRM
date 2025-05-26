@@ -36,11 +36,11 @@ module.exports = async function StartEventConsumer(channel, salesforceClient) {
    const queues = ["create", "update", "delete"];
 
    for (const action of queues) {
-      await channel.assertQueue(`crm_events_${action}`, {durable: true});
+      await channel.assertQueue(`crm_event_${action}`, {durable: true});
 
-      event_logger.info("listening on queue:", `crm_events_${action}`);
-      await sendMessage("INFO", "200", `listening on queue: events_${action}`);
-      await channel.consume(`events_${action}`, async (msg) => {
+      event_logger.info("listening on queue:", `crm_event_${action}`);
+      await sendMessage("INFO", "200", `listening on queue: crm_event_${action}`);
+      await channel.consume(`crm_event_${action}`, async (msg) => {
          if (!msg) return;
 
          const content = msg.content.toString();
