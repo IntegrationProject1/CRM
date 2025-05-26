@@ -35,7 +35,7 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
 
          const content = msg.content.toString();
          user_logger.info(`[${action}UserConsumer] Received: ${content}`);
-         await sendMessage("info", "200", "[UserConsumer] Received: " + content);
+         await sendMessage("INFO", "200", "[UserConsumer] Received: " + content);
 
          // convert XML to JSON
          let jsonConv;
@@ -45,7 +45,7 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
             channel.nack(msg, false, false);
             user_logger.error("[UserConsumer] Invalid xml formate:", e);
             console.error("❌ Ongeldig XML formaat:", content);
-            await sendMessage("error", "400", "[UserConsumer] Invalid xml formate: " + e);
+            await sendMessage("ERROR", "400", "[UserConsumer] Invalid xml formate: " + e);
             return;
          }
 
@@ -53,7 +53,7 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
             channel.nack(msg, false, false);
             user_logger.error("Invalid format:", jsonConv);
             console.error("❌ Ongeldig formaat:", jsonConv);
-            await sendMessage("error", "400", "[UserConsumer] Invalid format: " + jsonConv);
+            await sendMessage("ERROR", "400", "[UserConsumer] Invalid format: " + jsonConv);
             return;
          }
          const objectData = jsonConv.UserMessage;
@@ -73,14 +73,14 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
             } catch (err) {
                channel.nack(msg, false, false);
                 user_logger.error("[UserConsumer] Error retrieving Salesforce ID:", err.message);
-                await sendMessage("error", "400", "[UserConsumer] Error retrieving Salesforce ID: " + err.message);
+                await sendMessage("ERROR", "400", "[UserConsumer] Error retrieving Salesforce ID: " + err.message);
                return;
             }
 
             if (!result || result.length === 0) {
                channel.nack(msg, false, false);
                user_logger.error("[UserConsumer] No Salesforce ID found for UUID:", objectData.UUID);
-               await sendMessage("error", "400", "[UserConsumer] No Salesforce ID found for UUID: " + objectData.UUID);
+               await sendMessage("ERROR", "400", "[UserConsumer] No Salesforce ID found for UUID: " + objectData.UUID);
                return;
             }
             SalesforceObjId = result[0].Id;
@@ -90,7 +90,7 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
             channel.nack(msg, false, false);
             console.error("❌ UUID ontbreekt in het bericht");
             user_logger.error("[UserConsumer] UUID missing in message:");
-            await sendMessage("error", "400", "[UserConsumer] UUID missing in message");
+            await sendMessage("ERROR", "400", "[UserConsumer] UUID missing in message");
             return;
          }
 
@@ -131,11 +131,11 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
 
                   await salesforceClient.createUser(JSONMsg);
                   user_logger.info("[UserConsumer] User created:", JSONMsg);
-                  await sendMessage("info", "201", "[UserConsumer] User created: " + JSONMsg);
+                  await sendMessage("INFO", "201", "[UserConsumer] User created: " + JSONMsg);
                } catch (err) {
                   channel.nack(msg, false, false);
                   user_logger.error("[UserConsumer] Error creating user:", err.message);
-                  await sendMessage("error", "400", "[UserConsumer] Error creating user: " + err.message);
+                  await sendMessage("ERROR", "400", "[UserConsumer] Error creating user: " + err.message);
                   return;
                }
                break;
@@ -172,11 +172,11 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
 
                   await salesforceClient.updateUser(SalesforceObjId, JSONMsg);
                   user_logger.info("[UserConsumer] User updated:", JSONMsg);
-                  await sendMessage("info", "200", "[UserConsumer] User updated: " + JSONMsg);
+                  await sendMessage("INFO", "200", "[UserConsumer] User updated: " + JSONMsg);
                } catch (err) {
                   channel.nack(msg, false, false);
                   user_logger.error("[UserConsumer] Error updating user:", err.message);
-                  await sendMessage("error", "400", "[UserConsumer] Error updating user: " + err.message);
+                  await sendMessage("ERROR", "400", "[UserConsumer] Error updating user: " + err.message);
                   return;
                }
                break;
@@ -185,11 +185,11 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
                try {
                   await salesforceClient.deleteUser(SalesforceObjId);
                   user_logger.info("[UserConsumer] User deleted:", SalesforceObjId);
-                  await sendMessage("info", "200", "[UserConsumer] User deleted: " + SalesforceObjId);
+                  await sendMessage("INFO", "200", "[UserConsumer] User deleted: " + SalesforceObjId);
                } catch (err) {
                   channel.nack(msg, false, false);
                   user_logger.error("[UserConsumer] Error deleting user:", err.message);
-                  await sendMessage("error", "400", "[UserConsumer] Error deleting user: " + err.message);
+                  await sendMessage("ERROR", "400", "[UserConsumer] Error deleting user: " + err.message);
                   return;
                }
                break;
@@ -197,13 +197,13 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
             default:
                channel.nack(msg, false, false);
                user_logger.error("[UserConsumer] Invalid queue:", action);
-               await sendMessage("error", "400", "[UserConsumer] Invalid queue: " + action);
+               await sendMessage("ERROR", "400", "[UserConsumer] Invalid queue: " + action);
                return;
          }
 
          await channel.ack(msg);
       });
-      user_logger.info(`[UserConsumer] Listening for messages on queue "crm_user_${action}"…`);
-      await sendMessage("info", "200", "[UserConsumer] Listening for messages on queue");
+      user_logger.info(`[UserConsumer] Listening for messages on queue "crm_user_${action}`);
+      await sendMessage("INFO", "200", "[UserConsumer] Listening for messages on queue");
    }
 };

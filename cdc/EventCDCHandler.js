@@ -54,7 +54,7 @@ module.exports = async function EventCDCHandler(message, sfClient, RMQChannel) {
    }
 
    event_logger.info('Captured Event Object:', { header: ChangeEventHeader, changes: cdcObject });
-   await sendMessage("info", "200", `Captured Event Object: ${JSON.stringify({ header: ChangeEventHeader, changes: cdcObject })}`);
+   await sendMessage("INFO", "200", `Captured Event Object: ${JSON.stringify({ header: ChangeEventHeader, changes: cdcObject })}`);
 
    const action = ChangeEventHeader.changeType;
 
@@ -63,7 +63,7 @@ module.exports = async function EventCDCHandler(message, sfClient, RMQChannel) {
       recordId = ChangeEventHeader.recordIds?.[0];
       if (!recordId) {
          event_logger.error('No recordId found for action:', action);
-         await sendMessage("error", "400", 'No recordId found for action: ' + action);
+         await sendMessage("ERROR", "400", 'No recordId found for action: ' + action);
          return;
       }
    }
@@ -81,7 +81,7 @@ module.exports = async function EventCDCHandler(message, sfClient, RMQChannel) {
             await sfClient.sObject('Event__c')
                .update({Id: recordId, UUID__c: UUID });
             event_logger.info("UUID successfully updated:", UUID);
-            await sendMessage("info", "201", `UUID successfully updated: ${UUID}`);
+            await sendMessage("INFO", "201", `UUID successfully updated: ${UUID}`);
 
             JSONMsg = {
                CreateEvent: {
@@ -151,7 +151,7 @@ module.exports = async function EventCDCHandler(message, sfClient, RMQChannel) {
 
          default:
             event_logger.warning("Unhandled action:", action);
-            await sendMessage("warn", "400", `Unhandled action: ${action}`);
+            await sendMessage("WARNING", "400", `Unhandled action: ${action}`);
             return;
       }
 
@@ -175,15 +175,15 @@ module.exports = async function EventCDCHandler(message, sfClient, RMQChannel) {
       for (const routingKey of routingKeys) {
          RMQChannel.publish(exchangeName, routingKey, Buffer.from(xmlMessage));
          event_logger.info(`Message sent to ${exchangeName} (${routingKey})`);
-         await sendMessage("info", "200", `Message sent to ${exchangeName} (${routingKey})`);
+         await sendMessage("INFO", "200", `Message sent to ${exchangeName} (${routingKey})`);
       }
 
    } catch (error) {
       event_logger.error(`❌ Critical error during ${action} action:`, error.message);
-      await sendMessage("error", "500", `Critical error during ${action} action: ${error.message}`);
+      await sendMessage("ERROR", "500", `Critical error during ${action} action: ${error.message}`);
       if (error.response?.body) {
          event_logger.error('Salesforce API error details:', error.response.body);
-         await sendMessage("error", "500", `Salesforce API error details: ${JSON.stringify(error.response.body)}`);
+         await sendMessage("ERROR", "500", `Salesforce API error details: ${JSON.stringify(error.response.body)}`);
       }
    }
 };
