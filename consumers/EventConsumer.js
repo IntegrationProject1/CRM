@@ -36,11 +36,11 @@ module.exports = async function StartEventConsumer(channel, salesforceClient) {
    const queues = ["create", "update", "delete"];
 
    for (const action of queues) {
-      await channel.assertQueue(`info_${action}`, {durable: true});
+      await channel.assertQueue(`crm_events_${action}`, {durable: true});
 
-      event_logger.info("listening on queue:", `info_${action}`);
-      await sendMessage("INFO", "200", `listening on queue: info_${action}`);
-      await channel.consume(`info_${action}`, async (msg) => {
+      event_logger.info("listening on queue:", `crm_events_${action}`);
+      await sendMessage("INFO", "200", `listening on queue: events_${action}`);
+      await channel.consume(`events_${action}`, async (msg) => {
          if (!msg) return;
 
          const content = msg.content.toString();
@@ -119,6 +119,8 @@ module.exports = async function StartEventConsumer(channel, salesforceClient) {
                } catch (err) {
                   channel.nack(msg, false, false);
                   console.error("❌ Fout bij create:", err.message);
+                  event_logger.error("Error creating event in Salesforce:", err.message);
+                  await sendMessage("ERROR", "500", `Error creating event in Salesforce: ${err.message}`);
                   return;
                }
                break;
@@ -166,15 +168,15 @@ module.exports = async function StartEventConsumer(channel, salesforceClient) {
 
             default:
                channel.nack(msg, false, false);
-               event_logger.error(`invalid queue: info_${action}`);
-               await sendMessage("ERROR", "400", `Invalid queue: info_${action}`);
+               event_logger.error(`invalid queue: events_${action}`);
+               await sendMessage("ERROR", "400", `Invalid queue: events_${action}`);
                return;
          }
 
          await channel.ack(msg);
       });
 
-      event_logger.info(`Listening for messages on queue "info_${action}"…`);
-      await sendMessage("INFO", "200", `Listening for messages on queue: info_${action}`);
+      event_logger.info(`Listening for messages on queue "events_${action}"…`);
+      await sendMessage("INFO", "200", `Listening for messages on queue: events_${action}`);
    }
 };
