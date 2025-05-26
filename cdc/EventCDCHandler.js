@@ -54,7 +54,7 @@ module.exports = async function EventCDCHandler(message, sfClient, RMQChannel) {
    }
 
    event_logger.info('Captured Event Object:', { header: ChangeEventHeader, changes: cdcObject });
-   await sendMessage("info", "200", `Captured Event Object: ${JSON.stringify({ header: ChangeEventHeader, changes: cdcObject })}`);
+   await sendMessage("INFO", "200", `Captured Event Object: ${JSON.stringify({ header: ChangeEventHeader, changes: cdcObject })}`);
 
    const action = ChangeEventHeader.changeType;
 
@@ -81,7 +81,7 @@ module.exports = async function EventCDCHandler(message, sfClient, RMQChannel) {
             await sfClient.sObject('Event__c')
                .update({Id: recordId, UUID__c: UUID });
             event_logger.info("UUID successfully updated:", UUID);
-            await sendMessage("info", "201", `UUID successfully updated: ${UUID}`);
+            await sendMessage("INFO", "201", `UUID successfully updated: ${UUID}`);
 
             JSONMsg = {
                CreateEvent: {
@@ -175,7 +175,7 @@ module.exports = async function EventCDCHandler(message, sfClient, RMQChannel) {
       for (const routingKey of routingKeys) {
          RMQChannel.publish(exchangeName, routingKey, Buffer.from(xmlMessage));
          event_logger.info(`Message sent to ${exchangeName} (${routingKey})`);
-         await sendMessage("info", "200", `Message sent to ${exchangeName} (${routingKey})`);
+         await sendMessage("INFO", "200", `Message sent to ${exchangeName} (${routingKey})`);
       }
 
    } catch (error) {

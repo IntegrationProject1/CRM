@@ -23,7 +23,7 @@ module.exports = async function SessionParticipantCDCHandler(message, sfClient, 
     }
 
     session_logger.info('Captured Session Participant Object:', { header: ChangeEventHeader, changes: cdcObject });
-    await sendMessage("info", "200", `Captured Session Participant Object: ${JSON.stringify({ header: ChangeEventHeader, changes: cdcObject })}`);
+    await sendMessage("INFO", "200", `Captured Session Participant Object: ${JSON.stringify({ header: ChangeEventHeader, changes: cdcObject })}`);
     const action = ChangeEventHeader.changeType;
 
     let recordId;
@@ -186,7 +186,7 @@ module.exports = async function SessionParticipantCDCHandler(message, sfClient, 
     for (const routingKey of routingKeys) {
         RMQChannel.publish(exchangeName, routingKey, Buffer.from(xmlMessage));
         session_logger.info(`Sent to ${exchangeName} (${routingKey})`);
-        await sendMessage("info", "200", `Sent to ${exchangeName} (${routingKey})`);
+        await sendMessage("INFO", "200", `Sent to ${exchangeName} (${routingKey})`);
     }
 
     async function getSessionParticipants(sessionId) {

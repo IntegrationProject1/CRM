@@ -35,7 +35,7 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
 
          const content = msg.content.toString();
          user_logger.info(`[${action}UserConsumer] Received: ${content}`);
-         await sendMessage("info", "200", "[UserConsumer] Received: " + content);
+         await sendMessage("INFO", "200", "[UserConsumer] Received: " + content);
 
          // convert XML to JSON
          let jsonConv;
@@ -131,7 +131,7 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
 
                   await salesforceClient.createUser(JSONMsg);
                   user_logger.info("[UserConsumer] User created:", JSONMsg);
-                  await sendMessage("info", "201", "[UserConsumer] User created: " + JSONMsg);
+                  await sendMessage("INFO", "201", "[UserConsumer] User created: " + JSONMsg);
                } catch (err) {
                   channel.nack(msg, false, false);
                   user_logger.error("[UserConsumer] Error creating user:", err.message);
@@ -172,7 +172,7 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
 
                   await salesforceClient.updateUser(SalesforceObjId, JSONMsg);
                   user_logger.info("[UserConsumer] User updated:", JSONMsg);
-                  await sendMessage("info", "200", "[UserConsumer] User updated: " + JSONMsg);
+                  await sendMessage("INFO", "200", "[UserConsumer] User updated: " + JSONMsg);
                } catch (err) {
                   channel.nack(msg, false, false);
                   user_logger.error("[UserConsumer] Error updating user:", err.message);
@@ -185,7 +185,7 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
                try {
                   await salesforceClient.deleteUser(SalesforceObjId);
                   user_logger.info("[UserConsumer] User deleted:", SalesforceObjId);
-                  await sendMessage("info", "200", "[UserConsumer] User deleted: " + SalesforceObjId);
+                  await sendMessage("INFO", "200", "[UserConsumer] User deleted: " + SalesforceObjId);
                } catch (err) {
                   channel.nack(msg, false, false);
                   user_logger.error("[UserConsumer] Error deleting user:", err.message);
@@ -203,7 +203,7 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
 
          await channel.ack(msg);
       });
-      user_logger.info(`[UserConsumer] Listening for messages on queue "crm_user_${action}"…`);
-      await sendMessage("info", "200", "[UserConsumer] Listening for messages on queue");
+      user_logger.info(`[UserConsumer] Listening for messages on queue "crm_user_${action}`);
+      await sendMessage("INFO", "200", "[UserConsumer] Listening for messages on queue");
    }
 };

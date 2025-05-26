@@ -39,13 +39,13 @@ module.exports = async function StartSessionConsumer(channel, salesforceClient) 
       await channel.assertQueue(`crm_session_${action}`, {durable: true});
 
       session_logger.info(`[UserConsumer] listenen on queue: crm_session_${action}`);
-      await sendMessage("info", "200", `[UserConsumer] listenen on queue: crm_session_${action}`);
+      await sendMessage("INFO", "200", `[UserConsumer] listenen on queue: crm_session_${action}`);
       await channel.consume(`crm_session_${action}`, async (msg) => {
          if (!msg) return;
 
          const content = msg.content.toString();
          session_logger.info(`[${action}SessionConsumer] Ontvangen bericht: ${content}`);
-         await sendMessage("info", "200", `[${action}SessionConsumer] Ontvangen bericht: ${content}`);
+         await sendMessage("INFO", "200", `[${action}SessionConsumer] Ontvangen bericht: ${content}`);
 
          // XML naar JSON conversie
          let rabbitMQMsg;
@@ -142,7 +142,7 @@ module.exports = async function StartSessionConsumer(channel, salesforceClient) 
 
                   await salesforceClient.sObject("Session__c").create(salesForceMsg);
                   session_logger.info(`[${action}SessionConsumer] Sessie aangemaakt in Salesforce: ${JSON.stringify(salesForceMsg)}`);
-                  await sendMessage("info", "201", `[${action}SessionConsumer] Sessie is created in Salesforce: ${JSON.stringify(salesForceMsg)}`);
+                  await sendMessage("INFO", "201", `[${action}SessionConsumer] Sessie is created in Salesforce: ${JSON.stringify(salesForceMsg)}`);
                } catch (err) {
                   channel.nack(msg, false, false);
                   session_logger.error(`[${action}SessionConsumer] Error creating session in Salesforce: ${err.message}`);
@@ -210,7 +210,7 @@ module.exports = async function StartSessionConsumer(channel, salesforceClient) 
 
                   await salesforceClient.sObject("Session__c").update(salesForceMsg);
                   session_logger.info(`[${action}SessionConsumer] Sessie is updated in Salesforce: ${JSON.stringify(salesForceMsg)}`);
-                  await sendMessage("info", "200", `[${action}SessionConsumer] Sessie is updated in Salesforce: ${JSON.stringify(salesForceMsg)}`);
+                  await sendMessage("INFO", "200", `[${action}SessionConsumer] Sessie is updated in Salesforce: ${JSON.stringify(salesForceMsg)}`);
                } catch (err) {
                   channel.nack(msg, false, false);
                   session_logger.error("Error when updating", err.message);
@@ -223,7 +223,7 @@ module.exports = async function StartSessionConsumer(channel, salesforceClient) 
                try {
                   await salesforceClient.sObject("Session__c").delete(SalesforceObjId);
                   session_logger.info(`[${action}SessionConsumer] Sessie is deleted from Salesforce: ${SalesforceObjId}`);
-                  await sendMessage("info", "200", `[${action}SessionConsumer] Sessie is deleted from Salesforce: ${SalesforceObjId}`);
+                  await sendMessage("INFO", "200", `[${action}SessionConsumer] Sessie is deleted from Salesforce: ${SalesforceObjId}`);
                } catch (err) {
                   channel.nack(msg, false, false);
                   session_logger.error(`[${action}SessionConsumer] Error deleting session in Salesforce: ${err.message}`);
@@ -243,6 +243,6 @@ module.exports = async function StartSessionConsumer(channel, salesforceClient) 
       });
 
       session_logger.info("Listening for messages on queue: crm_session_" + action);
-      await sendMessage("info", "200", "Listening for messages on queue: crm_session_" + action);
+      await sendMessage("INFO", "200", "Listening for messages on queue: crm_session_" + action);
    }
 };

@@ -32,8 +32,8 @@ module.exports = async function EventParticipantCDCHandler(message, sfClient, RM
       event_logger.debug("Salesforce REST API call detected, skipping action.");
       return;
    }
-   event_logger.info('Received Event Participant Object:', event_logger.info);
-   await sendMessage("info", "200", `Captured Event Participant Object: ${JSON.stringify({header: ChangeEventHeader, changes: cdcObject})}`);
+   event_logger.info('Received Event Participant Object:', {header: ChangeEventHeader, changes: cdcObject});
+   await sendMessage("INFO", "200", `Captured Event Participant Object: ${JSON.stringify({header: ChangeEventHeader, changes: cdcObject})}`);
    const action = ChangeEventHeader.changeType;
 
    let recordId;
@@ -190,7 +190,7 @@ module.exports = async function EventParticipantCDCHandler(message, sfClient, RM
    for (const routingKey of routingKeys) {
       RMQChannel.publish(exchangeName, routingKey, Buffer.from(xmlMessage));
       event_logger.info(`Message sent to ${exchangeName} (${routingKey})`);
-      await sendMessage("info", "200", `Message sent to ${exchangeName} (${routingKey})`);
+      await sendMessage("INFO", "200", `Message sent to ${exchangeName} (${routingKey})`);
 
    }
 

@@ -56,7 +56,7 @@ module.exports = async function SessionCDCHandler(message, sfClient, RMQChannel)
 
     console.log("Captured Session Object: ", { header: ChangeEventHeader, changes: cdcObject });
     session_logger.info("Captured Session Object: ", { header: ChangeEventHeader, changes: cdcObject });
-    await sendMessage("info","200", `Captured Session Object ${JSON.stringify({header: ChangeEventHeader, changes: cdcObject})}` );
+    await sendMessage("INFO","200", `Captured Session Object ${JSON.stringify({header: ChangeEventHeader, changes: cdcObject})}` );
 
     const action = ChangeEventHeader.changeType;
     const recordId = ChangeEventHeader.recordIds?.[0];
@@ -76,7 +76,7 @@ module.exports = async function SessionCDCHandler(message, sfClient, RMQChannel)
                 await sfClient.sObject('Session__c')
                     .update({ Id: recordId, UUID__c: UUID });
                 session_logger.info("Session UUID updated:", UUID);
-                await sendMessage("info","200", "Session UUID updated" );
+                await sendMessage("INFO","200", "Session UUID updated" );
 
                 // Haal Event UUID op
                 const eventResult = await sfClient.sObject("Event__c")
@@ -236,7 +236,7 @@ module.exports = async function SessionCDCHandler(message, sfClient, RMQChannel)
         for (const routingKey of routingKeys) {
             RMQChannel.publish(exchangeName, routingKey, Buffer.from(xmlMessage));
             session_logger.info(`message send to ${exchangeName} (${routingKey})`);
-            await sendMessage("info","200", `Message sent to ${exchangeName} (${routingKey})`);
+            await sendMessage("INFO","200", `Message sent to ${exchangeName} (${routingKey})`);
         }
 
     } catch (error) {

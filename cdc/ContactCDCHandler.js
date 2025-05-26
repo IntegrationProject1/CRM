@@ -95,7 +95,7 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
 
    const action = ChangeEventHeader.changeType;
    user_logger.info('Captured Contact CDC Event:', { header: ChangeEventHeader, changes: cdcObjectData });
-   await sendMessage("info", "200", `Captured Contact CDC Event: ${JSON.stringify({ header: ChangeEventHeader, changes: cdcObjectData })}`);
+   await sendMessage("INFO", "200", `Captured Contact CDC Event: ${JSON.stringify({ header: ChangeEventHeader, changes: cdcObjectData })}`);
 
    let recordId;
    if (['CREATE', 'UPDATE', 'DELETE'].includes(action)) {
@@ -119,7 +119,7 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
             UUID = generateMicroDateTime();
             await sfClient.updateUser(recordId, { UUID__c: UUID });
             user_logger.info("UUID successfully updated:", UUID);
-            await sendMessage("info", "200", `UUID successfully updated: ${UUID}`);
+            await sendMessage("INFO", "200", `UUID successfully updated: ${UUID}`);
 
 
             JSONMsg = {

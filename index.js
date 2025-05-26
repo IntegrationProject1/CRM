@@ -53,7 +53,7 @@ const { general_logger } = require("./utils/logger");
       general_logger.debug(conn);
       const channel = await conn.createChannel();
       general_logger.info('Connected to RabbitMQ');
-      await sendMessage("info", "200", "Connected to RabbitMQ");
+      await sendMessage("INFO", "200", "Connected to RabbitMQ");
 
       // Log in to Salesforce
       general_logger.info('Logging in to Salesforce');
@@ -63,7 +63,7 @@ const { general_logger } = require("./utils/logger");
          process.env.SALESFORCE_TOKEN,
          process.env.SALESFORCE_LOGIN_URL
       );
-      await sendMessage("info", "200", "Logged in to Salesforce");
+      await sendMessage("INFO", "200", "Logged in to Salesforce");
 
       await sfClient.login();
 
@@ -73,22 +73,22 @@ const { general_logger } = require("./utils/logger");
       await StartEventConsumer(channel, sfClient);
       await StartSessionConsumer(channel, sfClient);
       // await StartSessionParticipateConsumer(channel, sfClient);
-      await sendMessage("info", "200", "Consumers for CRM Service started");
+      await sendMessage("INFO", "200", "Consumers for CRM Service started");
 
       // Start the CDC listeners
-      await sendMessage("info", "200", "Starting CDC listeners for CRM Service");
+      await sendMessage("INFO", "200", "Starting CDC listeners for CRM Service");
       const cdcClient = sfClient.createCDCClient();
       general_logger.info('CDC listeners started');
 
       // Subscribe to ContactChangeEvent
-      await sendMessage("info", "200", "Starting consumers (ContactChangeEvent) for CRM Service");
+      await sendMessage("INFO", "200", "Starting consumers (ContactChangeEvent) for CRM Service");
       cdcClient.subscribe('/data/ContactChangeEvent', async (message) => {
          await ContactCDCHandler(message, sfClient, channel);
       });
       general_logger.info('Listening to ContactChangeEvent');
 
       // Subscribe to Event__ChangeEvent
-      await sendMessage("info", "200", "Starting consumers (Event__ChangeEvent) for CRM Service");
+      await sendMessage("INFO", "200", "Starting consumers (Event__ChangeEvent) for CRM Service");
       cdcClient.subscribe('/data/Event__ChangeEvent', async (message) => {
          await EventCDCHandler(message, sfClient, channel);
       });
@@ -98,11 +98,11 @@ const { general_logger } = require("./utils/logger");
       cdcClient.subscribe('/data/Event_Participant__ChangeEvent', async (message) => {
          await EventParticipantCDCHandler(message, sfClient, channel);
       });
-      await sendMessage("info", "200", "Starting consumers (Event_Participant__ChangeEvent) for CRM Service");
+      await sendMessage("INFO", "200", "Starting consumers (Event_Participant__ChangeEvent) for CRM Service");
       general_logger.info('Listening to Event_Participant__ChangeEvent');
 
       // Subscribe to Session__ChangeEvent
-      await sendMessage("info", "200", "Starting Session CDC Listener");
+      await sendMessage("INFO", "200", "Starting Session CDC Listener");
       cdcClient.subscribe('/data/Session__ChangeEvent', async (message) => {
          await SessionCDCHandler(message, sfClient, channel);
       });
@@ -115,7 +115,7 @@ const { general_logger } = require("./utils/logger");
       general_logger.debug(heartBeatRoutingKey);
 
       general_logger.info('Starting the heartbeat publisher');
-      await sendMessage("info", "200", "Starting the heartbeat publisher for CRM Service");
+      await sendMessage("INFO", "200", "Starting the heartbeat publisher for CRM Service");
       await startHeartbeat(channel, heartBeatQueue, heartBeatRoutingKey, 'CRM');
    } catch (err) {
       /**
