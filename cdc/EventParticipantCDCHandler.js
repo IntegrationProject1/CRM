@@ -32,8 +32,8 @@ module.exports = async function EventParticipantCDCHandler(message, sfClient, RM
       event_logger.debug("Salesforce REST API call detected, skipping action.");
       return;
    }
-   event_logger.info('Received Event Participant Object:', event_logger.info);
-   await sendMessage("info", "200", `Captured Event Participant Object: ${JSON.stringify({header: ChangeEventHeader, changes: cdcObject})}`);
+   event_logger.info('Received Event Participant Object:', {header: ChangeEventHeader, changes: cdcObject});
+   await sendMessage("INFO", "200", `Captured Event Participant Object: ${JSON.stringify({header: ChangeEventHeader, changes: cdcObject})}`);
    const action = ChangeEventHeader.changeType;
 
    let recordId;
@@ -44,14 +44,14 @@ module.exports = async function EventParticipantCDCHandler(message, sfClient, RM
       recordId = ChangeEventHeader.recordIds?.[0];
       if (!recordId){
          event_logger.error('No recordId found for action:', action);
-         await sendMessage("error", "400", 'No recordId found for action: ' + action);
+         await sendMessage("ERROR", "400", 'No recordId found for action: ' + action);
          return;
       }
    }
 
    if (action === 'UPDATE') {
       event_logger.warn("Update action not supported for Event_Participant__c.");
-      await sendMessage("warn", "400", "Update action not supported for Event_Participant__c.");
+      await sendMessage("WARNING", "400", "Update action not supported for Event_Participant__c.");
       return;
    }
 
@@ -76,7 +76,7 @@ module.exports = async function EventParticipantCDCHandler(message, sfClient, RM
 
       } catch (e) {
             event_logger.error("Error retrieving Event ID from deleted participant:", e.message);
-            await sendMessage("error", "500", `Error retrieving Event ID from deleted participant: ${e.message}`);
+            await sendMessage("ERROR", "500", `Error retrieving Event ID from deleted participant: ${e.message}`);
          return;
       }
    }
@@ -86,7 +86,7 @@ module.exports = async function EventParticipantCDCHandler(message, sfClient, RM
 
    if (!eventId) {
         event_logger.error("No Event ID found in the CDC object for action " + action);
-        await sendMessage("error", "400", "No Event ID found in the CDC object for action " + action);
+        await sendMessage("ERROR", "400", "No Event ID found in the CDC object for action " + action);
         return;
    }
 
@@ -99,14 +99,14 @@ module.exports = async function EventParticipantCDCHandler(message, sfClient, RM
 
       } catch (e) {
          event_logger.error("Error retrieving associated event record:", e.message);
-         await sendMessage("error", "500", `Error retrieving associated event record: ${e.message}`);
+         await sendMessage("ERROR", "500", `Error retrieving associated event record: ${e.message}`);
          return;
       }
 
       eventUUID = eventRecord.UUID__c;
       if (!eventUUID) {
          event_logger.error(`No UUID found for event record: ${eventId}`);
-         await sendMessage("error", "400", `No UUID found for event record: ${eventId}`);
+         await sendMessage("ERROR", "400", `No UUID found for event record: ${eventId}`);
          return;
       }
 
@@ -120,13 +120,13 @@ module.exports = async function EventParticipantCDCHandler(message, sfClient, RM
 
       } catch (e) {
          event_logger.error("Error retrieving associated contact record:", e.message);
-         await sendMessage("error", "500", `Error retrieving associated contact record: ${e.message}`);
+         await sendMessage("ERROR", "500", `Error retrieving associated contact record: ${e.message}`);
          return;
       }
 
       if (!contactRecord.UUID__c) {
             event_logger.error(`No UUID found for contact ID: ${cdcObject.Contact__c}`);
-            await sendMessage("error", "400", `No UUID found for contact ID: ${cdcObject.Contact__c}`);
+            await sendMessage("ERROR", "400", `No UUID found for contact ID: ${cdcObject.Contact__c}`);
             return;
       }
 
@@ -138,7 +138,7 @@ module.exports = async function EventParticipantCDCHandler(message, sfClient, RM
 
    if (!eventUUID) {
       event_logger.error("Failed to retrieve the associated event UUID record for this participant using action " + action);
-      await sendMessage("error", "400", "Failed to retrieve the associated event UUID record for this participant using action " + action);
+      await sendMessage("ERROR", "400", "Failed to retrieve the associated event UUID record for this participant using action " + action);
       return;
 
    }
@@ -173,7 +173,7 @@ module.exports = async function EventParticipantCDCHandler(message, sfClient, RM
       }
    } catch (e) {
       event_logger.error(`Error during XSD validation:`, e.message);
-      await sendMessage("error", "500", `Error during XSD validation: ${e.message}`);
+      await sendMessage("ERROR", "500", `Error during XSD validation: ${e.message}`);
       return;
    }
 
@@ -190,7 +190,7 @@ module.exports = async function EventParticipantCDCHandler(message, sfClient, RM
    for (const routingKey of routingKeys) {
       RMQChannel.publish(exchangeName, routingKey, Buffer.from(xmlMessage));
       event_logger.info(`Message sent to ${exchangeName} (${routingKey})`);
-      await sendMessage("info", "200", `Message sent to ${exchangeName} (${routingKey})`);
+      await sendMessage("INFO", "200", `Message sent to ${exchangeName} (${routingKey})`);
 
    }
 
@@ -219,7 +219,7 @@ module.exports = async function EventParticipantCDCHandler(message, sfClient, RM
          return jsonMessageList;
       } catch (error) {
          event_logger.error("Error retrieving Event Participants:", error.message);
-         await sendMessage("error", "500", `Error retrieving Event Participants: ${error.message}`);
+         await sendMessage("ERROR", "500", `Error retrieving Event Participants: ${error.message}`);
          throw error;
       }
    }

@@ -40,14 +40,14 @@ async function startHeartbeat(channel, exchangeName, routingKey, serviceName = '
 
       if (!fs.existsSync(xsdPath)) {
          heartbeat_logger.error('XSD file not found. Ensure it exists at:', xsdPath);
-         await sendMessage("error", "500", "XSD file not found");
+         await sendMessage("ERROR", "500", "XSD file not found");
          return;
       }
 
       const validationResult = validateXml(xml, xsdPath);
       if (!validationResult.isValid) {
          heartbeat_logger.error('Heartbeat XML not valid based on the XSD. Message not send.');
-         await sendMessage("error", "400", "Heartbeat XML not valid based on the XSD");
+         await sendMessage("ERROR", "400", "Heartbeat XML not valid based on the XSD");
          return;
       }
 

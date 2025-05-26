@@ -57,7 +57,7 @@ async function formatAddress(address) {
       });
    } catch (error) {
       user_logger.error('Address conversion error:', error);
-      await sendMessage("error", "500", `Address conversion error: ${error.message}`);
+      await sendMessage("ERROR", "500", `Address conversion error: ${error.message}`);
       return "";
    }
 }
@@ -95,7 +95,7 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
 
    const action = ChangeEventHeader.changeType;
    user_logger.info('Captured Contact CDC Event:', { header: ChangeEventHeader, changes: cdcObjectData });
-   await sendMessage("info", "200", `Captured Contact CDC Event: ${JSON.stringify({ header: ChangeEventHeader, changes: cdcObjectData })}`);
+   await sendMessage("INFO", "200", `Captured Contact CDC Event: ${JSON.stringify({ header: ChangeEventHeader, changes: cdcObjectData })}`);
 
    let recordId;
    if (['CREATE', 'UPDATE', 'DELETE'].includes(action)) {
@@ -103,7 +103,7 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
       if (!recordId) {
          user_logger.error('❌ Geen recordId gevonden.');
          console.error('❌ Geen recordId gevonden.');
-         await sendMessage("error", "400", 'No recordId found for action: ' + action);
+         await sendMessage("ERROR", "400", 'No recordId found for action: ' + action);
          return;
       }
    }
@@ -119,7 +119,7 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
             UUID = generateMicroDateTime();
             await sfClient.updateUser(recordId, { UUID__c: UUID });
             user_logger.info("UUID successfully updated:", UUID);
-            await sendMessage("info", "200", `UUID successfully updated: ${UUID}`);
+            await sendMessage("INFO", "200", `UUID successfully updated: ${UUID}`);
 
 
             JSONMsg = {
@@ -221,7 +221,7 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
 
          default:
             user_logger.warn("Unhandled action:", action);
-            await sendMessage("warn", "400", `Unhandled action: ${action}`);
+            await sendMessage("WARNING", "400", `Unhandled action: ${action}`);
 
             return;
       }
