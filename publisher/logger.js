@@ -1,3 +1,14 @@
+/**
+ * Logger module for sending messages to RabbitMQ.
+ * @module Logger
+ * @file publisher/logger.js
+ * @description Sends log messages to a RabbitMQ exchange for monitoring and debugging purposes.
+ * @requires path - Provides utilities for working with file and directory paths.
+ * @requires amqp - A library for interacting with RabbitMQ.
+ * @requires validateXml - A utility function for validating XML against an XSD schema.
+ * @requires logger_logger - A logger for logging events in the Logger module.
+ */
+
 const path = require('path');
 const amqp = require('amqplib');
 
