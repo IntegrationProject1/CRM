@@ -1,5 +1,3 @@
-// tests/CDChandler.test.js
-
 const ContactCDCHandler = require('../../cdc/ContactCDCHandler');
 
 // Mock dependencies
