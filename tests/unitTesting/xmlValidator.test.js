@@ -21,14 +21,14 @@ describe('xmlValidator', () => {
         jest.clearAllMocks();
     });
 
-    test('should return true for valid XML', () => {
+    test('should return object with isValid=true for valid XML', () => {
         fs.readFileSync.mockReturnValue('<dummyXSD></dummyXSD>');
 
         const result = validateXml(validXml, mockXsdPath);
-        expect(result).toBe(true);
+        expect(result.isValid).toBe(true);
     });
 
-    test('should return false for invalid XML', () => {
+    test('should return object with isValid=false for invalid XML', () => {
         fs.readFileSync.mockReturnValue('<dummyXSD></dummyXSD>');
 
         const libxmljsMock = require('libxmljs2').parseXml;
@@ -41,13 +41,21 @@ describe('xmlValidator', () => {
             });
 
         const result = validateXml(invalidXml, mockXsdPath);
-        expect(result).toBe(false);
+        expect(result.isValid).toBe(false);
+        expect(result.errorType).toBe('error');
+        expect(result.errorCode).toBe('400');
+        expect(result.errorMessage).toBe('XML validation failed');
+        expect(result.validationErrors).toEqual(['Invalid XML structure']);
     });
 
-    test('should return false if fs.readFileSync throws error', () => {
+    test('should return object with isValid=false if fs.readFileSync throws error', () => {
         fs.readFileSync.mockImplementation(() => { throw new Error('File not found'); });
 
         const result = validateXml(validXml, 'nonexistent.xsd');
-        expect(result).toBe(false);
+        expect(result.isValid).toBe(false);
+        expect(result.errorType).toBe('error');
+        expect(result.errorCode).toBe('500');
+        expect(result.errorMessage).toBe('XML validation error');
+        expect(result.error).toBe('File not found');
     });
 });

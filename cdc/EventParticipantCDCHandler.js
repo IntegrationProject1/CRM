@@ -167,7 +167,8 @@ module.exports = async function EventParticipantCDCHandler(message, sfClient, RM
    let xsdPath = './xsd/eventsXSD/UpdateEvent.xsd';
 
    try {
-      if (!validator.validateXml(xmlMessage, xsdPath)) {
+      const validationResult = validator.validateXml(xmlMessage, xsdPath);
+      if (!validationResult.isValid) {
          throw new Error(`XML validation failed for update`);
       }
    } catch (e) {

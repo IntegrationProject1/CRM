@@ -16,6 +16,8 @@
 
 require('dotenv').config();
 const amqp = require('amqplib');
+// Increase the maximum number of listeners to prevent MaxListenersExceededWarning
+process.setMaxListeners(15);
 const ContactCDCHandler = require('./cdc/ContactCDCHandler');
 const EventCDCHandler = require('./cdc/EventCDCHandler');
 const SessionCDCHandler = require('./cdc/SessionCDCHandler');

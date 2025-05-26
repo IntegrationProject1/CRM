@@ -50,7 +50,8 @@ async function sendLog(channel, exchangeName, serviceName = 'CRM_Service', statu
      */
     const xsdPath = path.join(__dirname, '../xsd/loggerXSD/logger.xsd');
 
-    if (!validateXml(xml, xsdPath)) {
+    const validationResult = validateXml(xml, xsdPath);
+    if (!validationResult.isValid) {
         logger_logger.error('The XML is not valid against the XSD. Message NOT sent.');
         return;
     }

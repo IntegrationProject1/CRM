@@ -163,7 +163,8 @@ module.exports = async function SessionParticipantCDCHandler(message, sfClient, 
     const xsdPath = './xsd/eventsXSD/UpdateSession.xsd'; // Adjusted XSD
 
     try {
-        if (!validator.validateXml(xmlMessage, xsdPath)) {
+        const validationResult = validator.validateXml(xmlMessage, xsdPath);
+        if (!validationResult.isValid) {
             throw new Error("XML validation failed");
         }
     } catch (e) {

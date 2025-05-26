@@ -44,7 +44,8 @@ async function startHeartbeat(channel, exchangeName, routingKey, serviceName = '
          return;
       }
 
-      if (!validateXml(xml, xsdPath)) {
+      const validationResult = validateXml(xml, xsdPath);
+      if (!validationResult.isValid) {
          heartbeat_logger.error('Heartbeat XML not valid based on the XSD. Message not send.');
          await sendMessage("error", "400", "Heartbeat XML not valid based on the XSD");
          return;

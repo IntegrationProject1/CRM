@@ -44,6 +44,7 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
          } catch (e) {
             channel.nack(msg, false, false);
             user_logger.error("[UserConsumer] Invalid xml formate:", e);
+            console.error("❌ Ongeldig XML formaat:", content);
             await sendMessage("error", "400", "[UserConsumer] Invalid xml formate: " + e);
             return;
          }
@@ -51,6 +52,7 @@ module.exports = async function StartUserConsumer(channel, salesforceClient) {
          if (!jsonConv.UserMessage) {
             channel.nack(msg, false, false);
             user_logger.error("Invalid format:", jsonConv);
+            console.error("❌ Ongeldig formaat:", jsonConv);
             await sendMessage("error", "400", "[UserConsumer] Invalid format: " + jsonConv);
             return;
          }

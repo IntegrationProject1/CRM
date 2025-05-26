@@ -88,7 +88,8 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
 
    const ignoreOrigin = process.env.IGNORE_CDC_API_ORIGIN === 'true';
    if (!ignoreOrigin && ChangeEventHeader.changeOrigin === "com/salesforce/api/rest/50.0") {
-      user_logger.debug("Salesforce API call detected, skipping action.");
+      user_logger.debug("🚫 Salesforce API call gedetecteerd, actie overgeslagen.");
+      console.log("🚫 Salesforce API call gedetecteerd, actie overgeslagen.");
       return;
    }
 
@@ -100,7 +101,8 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
    if (['CREATE', 'UPDATE', 'DELETE'].includes(action)) {
       recordId = ChangeEventHeader.recordIds?.[0];
       if (!recordId) {
-         user_logger.error('No recordId found for action:', action);
+         user_logger.error('❌ Geen recordId gevonden.');
+         console.error('❌ Geen recordId gevonden.');
          await sendMessage("error", "400", 'No recordId found for action: ' + action);
          return;
       }
@@ -225,7 +227,8 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
       }
 
       xmlMessage = jsonToXml(JSONMsg.UserMessage, { rootName: 'UserMessage' });
-      if (!validator.validateXml(xmlMessage, xsdPath)) {
+      const validationResult = validator.validateXml(xmlMessage, xsdPath);
+      if (!validationResult.isValid) {
          throw new Error(`XML validation failed for action: ${action}`);
       }
 
@@ -244,7 +247,7 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
       }
 
    } catch (error) {
-      console.error(`Critical error during ${action} actie:`, error.message);
+      console.error(`❌ Kritieke fout tijdens ${action} actie:`, `XML validatie gefaald voor actie: ${action}`);
       if (error.response?.body) {
          console.error('Salesforce API error details:', error.response.body);
       }

@@ -219,7 +219,8 @@ module.exports = async function SessionCDCHandler(message, sfClient, RMQChannel)
         JSONMsg = JSON.parse(JSON.stringify(JSONMsg, (k, v) => v ?? undefined));
 
         xmlMessage = jsonToXml(JSONMsg);
-        if (!validator.validateXml(xmlMessage, xsdPath)) {
+        const validationResult = validator.validateXml(xmlMessage, xsdPath);
+        if (!validationResult.isValid) {
             throw new Error(`XML validatie mislukt voor ${action}`);
         }
 

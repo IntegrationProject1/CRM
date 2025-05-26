@@ -157,7 +157,8 @@ module.exports = async function EventCDCHandler(message, sfClient, RMQChannel) {
 
       xmlMessage = jsonToXml(JSONMsg);
 
-      if (!validator.validateXml(xmlMessage, xsdPath)) {
+      const validationResult = validator.validateXml(xmlMessage, xsdPath);
+      if (!validationResult.isValid) {
          throw new Error(`XML validation failed for action: ${action}`);
       }
 
