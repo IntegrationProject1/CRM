@@ -25,7 +25,7 @@ jest.mock('../../utils/xmlJsonTranslator', () => ({
     jsonToXml: jest.fn(() => '<UserMessage></UserMessage>')
 }));
 jest.mock('../../utils/xmlValidator', () => ({
-    validateXml: jest.fn(() => true)
+    validateXml: jest.fn(() => ({ isValid: true }))
 }));
 
 describe('ContactCDCHandler integration', () => {

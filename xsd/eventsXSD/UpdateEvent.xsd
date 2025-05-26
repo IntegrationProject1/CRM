@@ -6,7 +6,7 @@
             <xs:sequence>
                 <xs:element name="EventUUID" type="xs:dateTime"/>
                 <xs:element name="EventName" type="xs:string" minOccurs="0" maxOccurs="1"/>
-                <xs:element name="Description" type="xs:string" minOccurs="0" maxOccurs="1"/>
+                <xs:element name="EventDescription" type="xs:string" minOccurs="0" maxOccurs="1"/>
                 <xs:element name="StartDateTime" type="xs:dateTime" minOccurs="0" maxOccurs="1"/>
                 <xs:element name="EndDateTime" type="xs:dateTime" minOccurs="0" maxOccurs="1"/>
                 <xs:element name="EventLocation" type="xs:string" minOccurs="0" maxOccurs="1"/>

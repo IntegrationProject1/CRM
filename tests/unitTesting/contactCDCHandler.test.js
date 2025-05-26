@@ -35,7 +35,7 @@ describe('ContactCDCHandler', () => {
 
     test('should handle CREATE action and publish messages', async () => {
         jsonToXml.mockReturnValue('<UserMessage></UserMessage>');
-        validator.validateXml.mockReturnValue(true);
+        validator.validateXml.mockReturnValue({ isValid: true });
         mockSFClient.updateUser.mockResolvedValue();
 
         await contactCDCHandler(baseMessage, mockSFClient, mockRMQChannel);
@@ -104,7 +104,7 @@ describe('ContactCDCHandler', () => {
             })
         });
         jsonToXml.mockReturnValue('<UserMessage></UserMessage>');
-        validator.validateXml.mockReturnValue(true);
+        validator.validateXml.mockReturnValue({ isValid: true });
 
         await contactCDCHandler(updateMessage, mockSFClient, mockRMQChannel);
 
@@ -137,7 +137,7 @@ describe('ContactCDCHandler', () => {
             })
         });
         jsonToXml.mockReturnValue('<UserMessage></UserMessage>');
-        validator.validateXml.mockReturnValue(true);
+        validator.validateXml.mockReturnValue({ isValid: true });
 
         await contactCDCHandler(deleteMessage, mockSFClient, mockRMQChannel);
 
@@ -147,7 +147,13 @@ describe('ContactCDCHandler', () => {
 
     test('should log error when XML validation fails', async () => {
         jsonToXml.mockReturnValue('<InvalidXml></InvalidXml>');
-        validator.validateXml.mockReturnValue(false);
+        validator.validateXml.mockReturnValue({ 
+            isValid: false,
+            errorType: 'error',
+            errorCode: '400',
+            errorMessage: 'XML validation failed',
+            validationErrors: ['Invalid XML structure']
+        });
 
         const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 

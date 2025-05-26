@@ -1,9 +1,12 @@
-const xml2js = require('xml2js');
 /**
- * Module for transforming XML and JSON data.
- * Provides functions to convert between XML and JSON formats.
+ * Traslator module for XML and JSON formats.
  * @module xmlJsonTranslator
+ * @file utils/xmlJsonTranslator.js
+ * @description Provides functions to convert XML to JSON and vice versa.
+ * @requires xml2js - A library for parsing XML and building XML from JSON.
  */
+
+const xml2js = require('xml2js');
 
 /**
  * Converts XML to JSON.
