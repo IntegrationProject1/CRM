@@ -1,6 +1,10 @@
 /**
  * @module EventConsumer
- * @description Beheert de verwerking van berichten uit RabbitMQ-queues voor het aanmaken, bijwerken en verwijderen van events in Salesforce.
+ * @file consumers/EventConsumer.js
+ * @description Manages the processing of messages from RabbitMQ queues for creating, updating, and deleting events in Salesforce.
+ * @requires xmlJsonTranslator - A module for converting XML to JSON.
+ * @requires event_logger - A logger for logging events in the EventConsumer.
+ * @requires sendMessage - A function to send messages to the RabbitMQ queue.
  */
 
 const xmlJsonTranslator = require("../utils/xmlJsonTranslator");
@@ -8,13 +12,23 @@ const {event_logger} = require("../utils/logger");
 const {sendMessage} = require("../publisher/logger");
 
 /**
- * Start de EventConsumer om berichten van RabbitMQ-queues te verwerken.
- * @param {Object} channel - Het RabbitMQ-kanaal voor het consumeren van berichten.
- * @param {Object} salesforceClient - De Salesforce-client voor interactie met Salesforce.
- * @returns {Promise<void>} - Een belofte die wordt vervuld wanneer de consumer is gestart.
+ * Start the EventConsumer to process messages from RabbitMQ queues.
+ * @param {Object} channel - The RabbitMQ channel for consuming messages.
+ * @param {Object} salesforceClient - The Salesforce client for interacting with Salesforce.
+ * @returns {Promise<void>} - A promise that resolves when the consumer has started.
+ * @example
+ * StartEventConsumer(channel, salesforceClient)
+ *  .then(() => console.log("EventConsumer started"))
+ *  .catch(err => console.error("Error starting EventConsumer:", err));
  */
 module.exports = async function StartEventConsumer(channel, salesforceClient) {
-
+   /**
+    * capitalize - Capitalize the first letter of a string.
+    * @param s - The string to capitalize.
+    * @returns {string} - The string with the first letter capitalized.
+    * @example
+    * capitalize("hello") // returns "Hello"
+    */
    function capitalize(s) { // Capitalize the first letter of a string
       return String(s[0]).toUpperCase() + String(s).slice(1);
    }

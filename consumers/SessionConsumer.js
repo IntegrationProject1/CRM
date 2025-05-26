@@ -1,14 +1,34 @@
 /**
  * @module SessionConsumer
- * @description Beheert de verwerking van berichten uit RabbitMQ-queues voor het aanmaken, bijwerken en verwijderen van sessies in Salesforce.
+ * @file consumers/SessionConsumer.js
+ * @description Manages the processing of messages from RabbitMQ queues for creating, updating, and deleting sessions in Salesforce.
+ * @requires xmlJsonTranslator - A module for converting XML to JSON.
+ * @requires session_logger - A logger for logging session-related messages.
+ * @requires sendMessage - A function to send messages to the logger.
  */
 
 const xmlJsonTranslator = require("../utils/xmlJsonTranslator");
 const {session_logger} = require("../utils/logger");
 const {sendMessage} = require("../publisher/logger");
 
+/**
+ * Start the SessionConsumer to process messages from RabbitMQ queues.
+ * @param channel - The RabbitMQ channel for consuming messages.
+ * @param salesforceClient - The Salesforce client for interacting with Salesforce.
+ * @returns {Promise<void>} - A promise that resolves when the consumer has started.
+ * @example
+ * StartSessionConsumer(channel, salesforceClient)
+ *  .then(() => console.log("SessionConsumer started"))
+ *  .catch(err => console.error("Error starting SessionConsumer:", err));
+ */
 module.exports = async function StartSessionConsumer(channel, salesforceClient) {
-
+   /**
+    * capitalize - Capitalize the first letter of a string.
+    * @param s - The string to capitalize.
+    * @returns {string} - The string with the first letter capitalized.
+    * @example
+    * capitalize("example") // returns "Example"
+    */
    function capitalize(s) {
       return String(s[0]).toUpperCase() + String(s).slice(1);
    }
