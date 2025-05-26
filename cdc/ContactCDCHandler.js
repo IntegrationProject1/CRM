@@ -1,11 +1,44 @@
+/**
+ * Contact CDC Handler
+ * @module ContactCDCHandler
+ * @file cdc/ContactCDCHandler.js
+ * @description Processes Salesforce Change Data Capture (CDC) messages for Contact objects and publishes them to RabbitMQ.
+ * @requires dotenv - Loads environment variables from a `.env` file.
+ * @requires jsonToXml - A utility for converting JSON objects to XML format.
+ * @requires validator - A utility for validating XML against an XSD schema.
+ * @requires hrtimeBase - A base time for generating microsecond precision timestamps.
+ * @requires jsonToAddress - A utility for converting Salesforce address objects to a standardized string format.
+ * @requires user_logger - A logger for logging events in the ContactCDCHandler.
+ * @requires sendMessage - A function to send messages to the RabbitMQ queue.
+ */
+
 require('dotenv').config();
 const { jsonToXml } = require("../utils/xmlJsonTranslator");
 const validator = require("../utils/xmlValidator");
 const hrtimeBase = process.hrtime.bigint();
 const { jsonToAddress } = require("../utils/adressTranslator");
+const {user_logger} = require("../utils/logger");
+const {sendMessage} = require("../publisher/logger");
 
-// voor update te fixen
-function formatAddress(address) {
+/**
+ * Formats a Salesforce address object into a standardized string format.
+ * @param {Object} address - The Salesforce address object.
+ * @returns {string} - The formatted address string.
+ * @example
+ * const address = {
+ *    Street: "Main Street",
+ *    HouseNumber: "123",
+ *    BusCode: "A",
+ *    City: "Amsterdam",
+ *    State: "North Holland",
+ *    PostalCode: "1012AB",
+ *    Country: "Netherlands"
+ * };
+ * const formattedAddress = formatAddress(address);
+ * console.log(formattedAddress);
+ * // "Main Street 123 A, Amsterdam, North Holland, 1012AB, Netherlands"
+ */
+async function formatAddress(address) {
    if (!address || !address.Street) return "";
 
    try {
@@ -23,13 +56,15 @@ function formatAddress(address) {
          Street: streetParts
       });
    } catch (error) {
-      console.error('Adresconversiefout:', error);
+      user_logger.error('Address conversion error:', error);
+      await sendMessage("error", "500", `Address conversion error: ${error.message}`);
       return "";
    }
 }
 
 /**
  * Generates the current ISO 8601 timestamp with microsecond precision.
+ * @returns {string} - The generated timestamp.
  */
 function generateMicroDateTime() {
    const diffNs = process.hrtime.bigint() - hrtimeBase;
@@ -42,25 +77,35 @@ function generateMicroDateTime() {
 }
 
 /**
- * @module ContactCDCHandler
- * @description Verwerkt Salesforce CDC-berichten voor Contact-objecten en publiceert ze naar RabbitMQ.
+ * Processes Salesforce CDC messages for Contact objects and publishes them to RabbitMQ.
+ * @param {Object} message - The CDC message payload.
+ * @param {Object} sfClient - The Salesforce client for interacting with Salesforce.
+ * @param {Object} RMQChannel - The RabbitMQ channel for publishing messages.
+ * @returns {Promise<void>} - A promise that resolves when the message is processed.
  */
 module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel) {
    const { ChangeEventHeader, ...cdcObjectData } = message.payload;
 
    const ignoreOrigin = process.env.IGNORE_CDC_API_ORIGIN === 'true';
    if (!ignoreOrigin && ChangeEventHeader.changeOrigin === "com/salesforce/api/rest/50.0") {
+      user_logger.debug("🚫 Salesforce API call gedetecteerd, actie overgeslagen.");
       console.log("🚫 Salesforce API call gedetecteerd, actie overgeslagen.");
       return;
    }
 
    const action = ChangeEventHeader.changeType;
-   console.log('📥 Salesforce CDC Contact Event ontvangen:', action, cdcObjectData);
+   user_logger.info('Captured Contact CDC Event:', { header: ChangeEventHeader, changes: cdcObjectData });
+   await sendMessage("info", "200", `Captured Contact CDC Event: ${JSON.stringify({ header: ChangeEventHeader, changes: cdcObjectData })}`);
 
    let recordId;
    if (['CREATE', 'UPDATE', 'DELETE'].includes(action)) {
       recordId = ChangeEventHeader.recordIds?.[0];
-      if (!recordId) return console.error('❌ Geen recordId gevonden.');
+      if (!recordId) {
+         user_logger.error('❌ Geen recordId gevonden.');
+         console.error('❌ Geen recordId gevonden.');
+         await sendMessage("error", "400", 'No recordId found for action: ' + action);
+         return;
+      }
    }
 
    let UUID;
@@ -73,7 +118,8 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
          case 'CREATE':
             UUID = generateMicroDateTime();
             await sfClient.updateUser(recordId, { UUID__c: UUID });
-            console.log("✅ UUID succesvol bijgewerkt:", UUID);
+            user_logger.info("UUID successfully updated:", UUID);
+            await sendMessage("info", "200", `UUID successfully updated: ${UUID}`);
 
 
             JSONMsg = {
@@ -107,7 +153,7 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
          case 'UPDATE':
             const updatedRecord = await sfClient.sObject('Contact').retrieve(recordId);
             if (!updatedRecord?.UUID__c) {
-               throw new Error(`Geen UUID gevonden voor record: ${recordId}`);
+               throw new Error(`No UUID found for record: ${recordId}`);
             }
 
             // Maak adresobjecten van Salesforce velden voor de update te laten werken.
@@ -160,7 +206,7 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
             const deletedRecord = resultDel[0];
 
             if (!deletedRecord?.UUID__c) {
-               throw new Error(`Geen UUID gevonden voor verwijderd record: ${recordId}`);
+               throw new Error(`No UUID found for deleted record: ${recordId}`);
             }
 
             JSONMsg = {
@@ -174,13 +220,16 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
             break;
 
          default:
-            console.warn("⚠️ Niet gehandelde actie:", action);
+            user_logger.warn("Unhandled action:", action);
+            await sendMessage("warn", "400", `Unhandled action: ${action}`);
+
             return;
       }
 
       xmlMessage = jsonToXml(JSONMsg.UserMessage, { rootName: 'UserMessage' });
-      if (!validator.validateXml(xmlMessage, xsdPath)) {
-         throw new Error(`XML validatie gefaald voor actie: ${action}`);
+      const validationResult = validator.validateXml(xmlMessage, xsdPath);
+      if (!validationResult.isValid) {
+         throw new Error(`XML validation failed for action: ${action}`);
       }
 
       const exchangeName = 'user';
@@ -194,13 +243,13 @@ module.exports = async function ContactCDCHandler(message, sfClient, RMQChannel)
 
       for (const routingKey of routingKeys) {
          RMQChannel.publish(exchangeName, routingKey, Buffer.from(xmlMessage));
-         console.log(`📤 Bericht verstuurd naar ${exchangeName} (${routingKey})`);
+         console.log(`Message sent to ${exchangeName} (${routingKey})`);
       }
 
    } catch (error) {
-      console.error(`❌ Kritieke fout tijdens ${action} actie:`, error.message);
+      console.error(`❌ Kritieke fout tijdens ${action} actie:`, `XML validatie gefaald voor actie: ${action}`);
       if (error.response?.body) {
-         console.error('Salesforce API fout details:', error.response.body);
+         console.error('Salesforce API error details:', error.response.body);
       }
    }
 };

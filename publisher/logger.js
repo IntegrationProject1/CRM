@@ -1,3 +1,14 @@
+/**
+ * Logger module for sending messages to RabbitMQ.
+ * @module Logger
+ * @file publisher/logger.js
+ * @description Sends log messages to a RabbitMQ exchange for monitoring and debugging purposes.
+ * @requires path - Provides utilities for working with file and directory paths.
+ * @requires amqp - A library for interacting with RabbitMQ.
+ * @requires validateXml - A utility function for validating XML against an XSD schema.
+ * @requires logger_logger - A logger for logging events in the Logger module.
+ */
+
 const path = require('path');
 const amqp = require('amqplib');
 
@@ -39,7 +50,8 @@ async function sendLog(channel, exchangeName, serviceName = 'CRM', status_level,
      */
     const xsdPath = path.join(__dirname, '../xsd/loggerXSD/logger.xsd');
 
-    if (!validateXml(xml, xsdPath)) {
+    const validationResult = validateXml(xml, xsdPath);
+    if (!validationResult.isValid) {
         logger_logger.error('The XML is not valid against the XSD. Message NOT sent.');
         return;
     }
@@ -55,7 +67,7 @@ async function sendLog(channel, exchangeName, serviceName = 'CRM', status_level,
  * @param {string} message - Message content.
  * @returns {Promise<void>} Resolves when the message is sent.
  * @example
- * sendMessage('logExchange', 'info', '200', 'Heartbeat message');
+ * sendMessage('info', '200', 'Heartbeat message');
  */
 async function sendMessage(status_level, code, message) {
     try {
