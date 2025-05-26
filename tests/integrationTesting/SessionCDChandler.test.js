@@ -1,3 +1,30 @@
+// Mocks to prevent open handles from Pino and RabbitMQ
+jest.mock('pino', () => {
+    const fakeLogger = {
+        info: jest.fn(),
+        error: jest.fn(),
+        warn: jest.fn(),
+        debug: jest.fn(),
+        child: jest.fn(() => fakeLogger)
+    };
+    fakeLogger.transport = jest.fn(() => ({}));
+    fakeLogger.destination = jest.fn(() => ({}));
+    return Object.assign(() => fakeLogger, fakeLogger);
+});
+jest.mock('../../publisher/logger', () => ({
+    sendMessage: jest.fn()
+}));
+jest.mock('../../utils/logger', () => ({
+    contact_logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+    user_logger:    { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() }
+}));
+jest.mock('../../utils/xmlJsonTranslator', () => ({
+    jsonToXml: jest.fn(() => '<UserMessage></UserMessage>')
+}));
+jest.mock('../../utils/xmlValidator', () => ({
+    validateXml: jest.fn(() => ({ isValid: true }))
+}));
+
 const SessionCDCHandler = require('../../cdc/SessionCDCHandler');
 
 const sObjectMock = {

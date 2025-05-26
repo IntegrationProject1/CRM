@@ -1,21 +1,39 @@
-// tests/integrationTesting/SessionConsumer.test.js
-
-const StartSessionConsumer = require('../../consumers/SessionConsumer');
-const xmlJsonTranslator = require('../../utils/xmlJsonTranslator');
-
-jest.mock('../../utils/xmlJsonTranslator');
-jest.mock('../../utils/logger', () => ({
-    session_logger: { info: jest.fn(), error: jest.fn() }
-}));
+// --- Mocks to prevent open handles and undefined functions ---
+jest.mock('pino', () => {
+    const fakeLogger = {
+        info: jest.fn(),
+        error: jest.fn(),
+        warn: jest.fn(),
+        debug: jest.fn(),
+        child: jest.fn(() => fakeLogger)
+    };
+    fakeLogger.transport = jest.fn(() => ({}));
+    fakeLogger.destination = jest.fn(() => ({}));
+    return Object.assign(() => fakeLogger, fakeLogger);
+});
 jest.mock('../../publisher/logger', () => ({
     sendMessage: jest.fn()
 }));
+jest.mock('../../utils/logger', () => ({
+    session_logger: { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
+    contact_logger: { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() },
+    user_logger:    { info: jest.fn(), error: jest.fn(), warn: jest.fn(), debug: jest.fn() }
+}));
+jest.mock('../../utils/xmlJsonTranslator', () => ({
+    jsonToXml: jest.fn(() => '<UserMessage></UserMessage>'),
+    xmlToJson: jest.fn()
+}));
+jest.mock('../../utils/xmlValidator', () => ({
+    validateXml: jest.fn(() => ({ isValid: true }))
+}));
+
+const StartSessionConsumer = require('../../consumers/SessionConsumer');
+const xmlJsonTranslator = require('../../utils/xmlJsonTranslator');
 
 describe('SessionConsumer Integration', () => {
     let channel, salesforceClient, sObjectMock;
 
     beforeEach(() => {
-        // Add .create, .update, .delete mocks here!
         sObjectMock = {
             select: jest.fn().mockReturnThis(),
             where: jest.fn().mockReturnThis(),
@@ -45,12 +63,10 @@ describe('SessionConsumer Integration', () => {
                 EventUUID: 'evt-1'
             }
         });
-        // Mock event lookup
         sObjectMock.run.mockResolvedValueOnce([{ Id: 'evt123' }]); // for Event__c
 
         await StartSessionConsumer(channel, salesforceClient);
 
-        // Handler for 'crm_session_create' is first call
         const handler = channel.consume.mock.calls[0][1];
         const msg = { content: Buffer.from('<CreateSession><SessionUUID>sess-1</SessionUUID><SessionName>Session Test</SessionName><EventUUID>evt-1</EventUUID></CreateSession>') };
         await handler(msg);
@@ -71,12 +87,10 @@ describe('SessionConsumer Integration', () => {
                 SessionName: 'Updated Session'
             }
         });
-        // Mock session lookup
         sObjectMock.run.mockResolvedValueOnce([{ Id: 'sess456' }]); // for Session__c
 
         await StartSessionConsumer(channel, salesforceClient);
 
-        // Handler for 'crm_session_update' is second call
         const handler = channel.consume.mock.calls[1][1];
         const msg = { content: Buffer.from('<UpdateSession><SessionUUID>sess-2</SessionUUID><SessionName>Updated Session</SessionName></UpdateSession>') };
         await handler(msg);
@@ -95,12 +109,10 @@ describe('SessionConsumer Integration', () => {
                 SessionUUID: 'sess-3'
             }
         });
-        // Mock session lookup
         sObjectMock.run.mockResolvedValueOnce([{ Id: 'sess789' }]); // for Session__c
 
         await StartSessionConsumer(channel, salesforceClient);
 
-        // Handler for 'crm_session_delete' is third call
         const handler = channel.consume.mock.calls[2][1];
         const msg = { content: Buffer.from('<DeleteSession><SessionUUID>sess-3</SessionUUID></DeleteSession>') };
         await handler(msg);
@@ -114,7 +126,6 @@ describe('SessionConsumer Integration', () => {
         xmlJsonTranslator.xmlToJson.mockRejectedValue(new Error('Invalid XML'));
         await StartSessionConsumer(channel, salesforceClient);
 
-        // Use the create handler for this test
         const handler = channel.consume.mock.calls[0][1];
         const msg = { content: Buffer.from('invalid xml') };
         await handler(msg);
